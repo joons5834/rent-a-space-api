@@ -27,14 +27,16 @@ public class UserController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final SecurityContextRepository securityContextRepository;
-    private final SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
+    private final SecurityContextHolderStrategy securityContextHolderStrategy;
 
     public UserController(AuthenticationManager authenticationManager,
                           UserService userService,
-                          SecurityContextRepository securityContextRepository) {
+                          SecurityContextRepository securityContextRepository,
+                          SecurityContextHolderStrategy securityContextHolderStrategy) {
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.securityContextRepository = securityContextRepository;
+        this.securityContextHolderStrategy = securityContextHolderStrategy;
     }
 
     @PostMapping("/v0/login")
