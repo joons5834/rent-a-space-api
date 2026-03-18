@@ -93,21 +93,12 @@ class AuthenticationFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.user.id").exists())
                 .andExpect(authenticated());
 
-        // TODO: 3. Access protected resource (assuming you have one)
-//        mockMvc.perform(get("/v0/profile")
-//                        .session(session))
-//                .andExpect(status().isOk());
-
-        // 4. Logout
+        // 3. Logout
         mockMvc.perform(post("/v0/logout")
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(unauthenticated());
 
-        // TODO: 5. Try to access protected resource after logout
-//        mockMvc.perform(get("/v0/profile")
-//                        .session(session))
-//                .andExpect(status().isUnauthorized());
     }
 
     @Test
