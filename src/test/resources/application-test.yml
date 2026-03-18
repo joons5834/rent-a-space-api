@@ -1,0 +1,39 @@
+# H2 In-memory database for tests
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+
+  # JPA/Hibernate settings for tests
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        # Show SQL parameter binding values
+        type:
+          descriptor:
+            sql: trace
+  # H2 Console (useful for debugging tests)
+  h2:
+    console:
+      enabled: true
+logging:
+  level:
+    org.springframework.security: DEBUG
+    # Show SQL parameter bindings
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # Alternative: show all Hibernate SQL details
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    # Show SQL query results
+    org.hibernate.orm.jdbc.extract: TRACE
+    org.hibernate.engine.internal.StatefulPersistenceContext: TRACE
+    org.hibernate.loader: DEBUG
+    org.hibernate.collection: DEBUG
