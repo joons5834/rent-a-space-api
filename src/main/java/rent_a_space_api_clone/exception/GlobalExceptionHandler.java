@@ -71,4 +71,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "Invalid credentials"));
     }
+
+    @ExceptionHandler(RoleAlreadyExistsException.class)
+    public ResponseEntity<Map<String, String>> handleRoleAlreadyExists(RoleAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }

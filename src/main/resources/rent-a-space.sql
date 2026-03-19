@@ -191,6 +191,8 @@ COMMENT ON COLUMN "holiday_override"."priority_weight" IS 'Used to resolve confl
 
 ALTER TABLE "users_profiles" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
+ALTER TABLE users_profiles ADD CONSTRAINT uk_user_role UNIQUE (user_id, role);
+
 ALTER TABLE "reservations" ADD FOREIGN KEY ("renter_profile_id") REFERENCES "users_profiles" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "reservations" ADD FOREIGN KEY ("cancelled_by") REFERENCES "users_profiles" ("id") DEFERRABLE INITIALLY IMMEDIATE;

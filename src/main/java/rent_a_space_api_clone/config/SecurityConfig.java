@@ -6,6 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +30,7 @@ import javax.sql.DataSource;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -70,7 +72,7 @@ public class SecurityConfig {
                 "SELECT email, password, enabled FROM users WHERE email = ?");
 
         users.setAuthoritiesByUsernameQuery("""
-                        SELECT email, role
+                        SELECT email, 'ROLE_' || role
                         FROM users u join users_profiles up on u.id = up.user_id
                         WHERE u.email = ? and up.enabled = true;
                         """);

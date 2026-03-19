@@ -3,11 +3,14 @@ package rent_a_space_api_clone.service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rent_a_space_api_clone.dto.AddRoleRequest;
 import rent_a_space_api_clone.dto.LoginResponse;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.UserResponse;
+import rent_a_space_api_clone.entity.Role;
 import rent_a_space_api_clone.entity.User;
 import rent_a_space_api_clone.entity.UserProfile;
+import rent_a_space_api_clone.exception.RoleAlreadyExistsException;
 import rent_a_space_api_clone.exception.UserAlreadyExistsException;
 import rent_a_space_api_clone.repository.UserProfileRepository;
 import rent_a_space_api_clone.repository.UserRepository;
@@ -79,7 +82,7 @@ public class UserService {
         profile.setRole(request.getRole()); // Store role in uppercase
         profile.setNickname(request.getRoleProfile().getNickname());
         profile.setBio(request.getRoleProfile().getBio());
-        profile.setEnabled(true);
+        profile.setEnabled(isEnabledByDefault(request.getRole()));
 
         UserProfile savedProfile = userProfileRepository.save(profile);
 
@@ -101,4 +104,56 @@ public class UserService {
         );
     }
 
+    @Transactional
+    public UserResponse addUserRole(Long userId, AddRoleRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // Check if the user already has this role
+        if (userProfileRepository.existsByUserIdAndRole(userId, request.getRole())) {
+            throw new RoleAlreadyExistsException("User already has role: " + request.getRole());
+        }
+
+        // Create new user profile with the specified role
+        UserProfile profile = new UserProfile();
+        profile.setUser(user);
+        profile.setRole(request.getRole());
+        profile.setNickname(request.getRoleProfile().getNickname());
+        profile.setBio(request.getRoleProfile().getBio());
+        profile.setEnabled(isEnabledByDefault(request.getRole()));
+
+        UserProfile savedProfile = userProfileRepository.save(profile);
+
+        // Return response with the new role profile
+        UserResponse.RoleProfileResponse roleProfileResponse =
+                new UserResponse.RoleProfileResponse(
+                        savedProfile.getNickname(),
+                        savedProfile.getBio()
+                );
+
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getEnabled(),
+                user.getCreatedAt(),
+                savedProfile.getRole(),
+                roleProfileResponse
+        );
+    }
+
+    private static boolean isEnabledByDefault(Role role) {
+        return !role.equals(Role.ADMIN);
+    }
+
+    public boolean isUserOwner(Long userId, String email) {
+        return userRepository.findById(userId)
+                .map(user -> user.getEmail().equals(email))
+                .orElse(false);
+    }
+
+    //Only used for testing
+    public void enableAdminRole(Long id) {
+        userProfileRepository.enableAdminRole(id);
+    }
 }

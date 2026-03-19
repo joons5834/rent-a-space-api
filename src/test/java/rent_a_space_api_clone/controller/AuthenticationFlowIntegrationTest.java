@@ -78,6 +78,9 @@ class AuthenticationFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("flow.test@example.com"));
 
+        entityManager.flush();
+        entityManager.clear();
+
         // 2. Login
         LoginRequest loginRequest = new LoginRequest(
                 "flow.test@example.com",

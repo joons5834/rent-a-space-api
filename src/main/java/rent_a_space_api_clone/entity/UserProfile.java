@@ -5,7 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users_profiles")
+@Table(name = "users_profiles",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_role",
+                columnNames = {"user_id", "role"}
+        ))
 @Data
 @NoArgsConstructor
 public class UserProfile {
