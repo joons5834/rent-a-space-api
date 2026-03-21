@@ -21,6 +21,8 @@ spring:
           descriptor:
             sql: trace
   # H2 Console (useful for debugging tests)
+  jackson:
+    property-naming-strategy: SNAKE_CASE
   h2:
     console:
       enabled: true
