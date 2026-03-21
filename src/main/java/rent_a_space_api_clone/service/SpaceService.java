@@ -15,10 +15,7 @@ import rent_a_space_api_clone.repository.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Handler;
 
 @Service
@@ -251,5 +248,12 @@ public class SpaceService {
             }
         }
         return daysList;
+    }
+
+    public boolean isSpaceOwner(Long id, String username) {
+        return spaceRepository.findById(id)
+                .map((space) -> space.getHostProfile().getUser()
+                        .getEmail().equals(username))
+                .orElse(false);
     }
 }
