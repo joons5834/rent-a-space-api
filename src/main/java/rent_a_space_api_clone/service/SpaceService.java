@@ -205,6 +205,7 @@ public class SpaceService {
         String phone2 = space.getPhone2();
         String email = space.getEmail();
         Boolean is_closed_on_public_holidays = space.getIsClosedAtPublicHolidays();
+        Boolean is_visible = space.getIsVisible();
         SpaceResponse.ClosesOnEvery closes_on_every = null;
         if (space.getHolidayRules() != null && !space.getHolidayRules().isEmpty()) {
             HolidayRule rule = space.getHolidayRules().get(0);
@@ -235,7 +236,7 @@ public class SpaceService {
             List<String> days = decodeDays(override.getDayMask());
             closes_on = new SpaceResponse.ClosesOn(override_name, start_date, last_date, days);
         }
-        SpaceResponse.SpaceData data = new SpaceResponse.SpaceData(id, category, name, description, is_open_24, opens_at, closes_at, main_image_url, images_urls, phone1, phone2, email, is_closed_on_public_holidays, closes_on_every, closes_on);
+        SpaceResponse.SpaceData data = new SpaceResponse.SpaceData(id, category, name, description, is_open_24, opens_at, closes_at, main_image_url, images_urls, phone1, phone2, email, is_closed_on_public_holidays, closes_on_every, closes_on, is_visible);
         return new SpaceResponse(data);
     }
 
