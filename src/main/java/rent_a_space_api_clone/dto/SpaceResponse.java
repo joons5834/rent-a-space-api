@@ -18,7 +18,7 @@ public record SpaceResponse(SpaceData data) {
             String email,
             Boolean is_closed_on_public_holidays,
             ClosesOnEvery closes_on_every,
-            ClosesOn closes_on,
+            List<ClosesOn> closes_on,
             Boolean is_visible
     ) {}
 

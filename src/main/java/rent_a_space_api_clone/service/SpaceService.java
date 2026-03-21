@@ -162,24 +162,26 @@ public class SpaceService {
 
         // Handle holiday overrides
         if (request.getClosesOn() != null) {
-            HolidayOverride override = new HolidayOverride();
-            override.setSpace(savedSpace);
-            override.setName(request.getClosesOn().getName());
-            override.setStartsAt(LocalDate.parse(request.getClosesOn().getStartDate()));
-            override.setEndsAt(LocalDate.parse(request.getClosesOn().getLastDate()));
-            override.setIsClosed(true);
-            if (request.getClosesOn().getDays() != null) {
-                short mask = 0;
-                for (String day : request.getClosesOn().getDays()) {
-                    Integer index = DAY_TO_INDEX.get(day);
-                    if (index != null) {
+            for (CreateSpaceRequest.ClosesOn closesOnItem : request.getClosesOn()) {
+                HolidayOverride override = new HolidayOverride();
+                override.setSpace(savedSpace);
+                override.setName(closesOnItem.getName());
+                override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
+                override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+                override.setIsClosed(true);
+                if (closesOnItem.getDays() != null) {
+                    short mask = 0;
+                    for (String day : closesOnItem.getDays()) {
+                        Integer index = DAY_TO_INDEX.get(day);
+                        if (index != null) {
                         mask |= (short) (1 << index);
+                        }
                     }
+                    override.setDayMask(mask);
                 }
-                override.setDayMask(mask);
+                override.setPriorityWeight(0); // default
+                holidayOverrideRepository.save(override);
             }
-            override.setPriorityWeight(0); // default
-            holidayOverrideRepository.save(override);
         }
         entityManager.flush();
         entityManager.clear();
@@ -227,15 +229,9 @@ public class SpaceService {
             List<String> days = decodeDays(rule.getDayMask());
             closes_on_every = new SpaceResponse.ClosesOnEvery(type, days);
         }
-        SpaceResponse.ClosesOn closes_on = null;
-        if (space. getHolidayOverrides() != null && !space.getHolidayOverrides().isEmpty()) {
-            HolidayOverride override = space.getHolidayOverrides().get(0);
-            String override_name = override.getName();
-            String start_date = override.getStartsAt().toString();
-            String last_date = override.getEndsAt().toString();
-            List<String> days = decodeDays(override.getDayMask());
-            closes_on = new SpaceResponse.ClosesOn(override_name, start_date, last_date, days);
-        }
+        List<SpaceResponse.ClosesOn> closes_on = space.getHolidayOverrides().stream()
+                .map(override -> new SpaceResponse.ClosesOn(override.getName(), override.getStartsAt().toString(), override.getEndsAt().toString(), decodeDays(override.getDayMask())))
+                .toList();
         SpaceResponse.SpaceData data = new SpaceResponse.SpaceData(id, category, name, description, is_open_24, opens_at, closes_at, main_image_url, images_urls, phone1, phone2, email, is_closed_on_public_holidays, closes_on_every, closes_on, is_visible);
         return new SpaceResponse(data);
     }

@@ -51,7 +51,7 @@ public class CreateSpaceRequest {
     private ClosesOnEvery closesOnEvery;
 
     @JsonProperty("closes_on")
-    private ClosesOn closesOn;
+    private List<ClosesOn> closesOn;
 
     @JsonProperty("is_visible")
     private Boolean isVisible;
