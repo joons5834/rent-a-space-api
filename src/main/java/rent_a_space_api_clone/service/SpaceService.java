@@ -17,7 +17,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.logging.Handler;
 
 @Service
 @RequiredArgsConstructor
@@ -61,128 +60,23 @@ public class SpaceService {
         space.setIsVisible(request.getIsVisible() != null ? request.getIsVisible() : false);
 
         // Handle times
-        if (Boolean.TRUE.equals(request.getIsOpen24())) {
-            space.setCloseStart(LocalTime.of(0, 0, 0));
-            space.setCloseEnd(LocalTime.of(0, 0, 0));
-        } else if (request.getOpensAt() != null && request.getClosesAt() != null) {
-            space.setCloseStart(LocalTime.parse(request.getClosesAt()));
-            space.setCloseEnd(LocalTime.parse(request.getOpensAt()));
-        }
+        configureOpeningTimes(space, request.getIsOpen24(), request.getOpensAt(), request.getClosesAt());
 
         // Save space first to get id
         Space savedSpace = spaceRepository.save(space);
 
         // Handle images
-        List<SpacesImage> spacesImages = new ArrayList<>();
-        int order = 1;
-        if (request.getMainImageUrl() != null) {
-            Image image = imageRepository.findByFullUrl(request.getMainImageUrl())
-                    .orElseThrow(() -> new IllegalArgumentException("Image not found: " + request.getMainImageUrl()));
-            SpacesImage si = new SpacesImage();
-            si.setSpace(savedSpace);
-            si.setImage(image);
-            si.setOrderSeq(order++);
-            spacesImages.add(si);
-        }
-        if (request.getImagesUrls() != null) {
-            for (String url : request.getImagesUrls()) {
-                Image image = imageRepository.findByFullUrl(url)
-                        .orElseThrow(() -> new IllegalArgumentException("Image not found: " + url));
-                SpacesImage si = new SpacesImage();
-                si.setSpace(savedSpace);
-                si.setImage(image);
-                si.setOrderSeq(order++);
-                spacesImages.add(si);
-            }
-        }
-        spacesImageRepository.saveAll(spacesImages);
+        createAndSaveSpacesImages(savedSpace, request.getMainImageUrl(), request.getImagesUrls());
 
         // Handle holiday rules
         if (request.getClosesOnEvery() != null) {
-            HolidayRule rule = new HolidayRule();
-            rule.setSpace(savedSpace);
-            String type = request.getClosesOnEvery().getType();
-            switch (type) {
-                case "every_week" -> {
-                    rule.setFrequencyType("WEEKLY");
-                }
-                case "every_odd_week" -> {
-                    rule.setFrequencyType("BI_WEEKLY");
-                    rule.setNthOccurrence((short) 1);
-                }
-                case "every_even_week" -> {
-                    rule.setFrequencyType("BI_WEEKLY");
-                    rule.setNthOccurrence((short) 0);
-                }
-                case "every_first_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 1);
-                }
-                case "every_second_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 2);
-                }
-                case "every_third_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 3);
-                }
-                case "every_fourth_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 4);
-                }
-                case "every_last_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) -1);
-                }
-                case "every_last_day_of_month" -> {
-                    rule.setFrequencyType("LAST_DAY_OF_MONTH");
-                    rule.setDayMask((short) 127);
-                }
-                case "every_month" -> {
-                    rule.setFrequencyType("MONTHLY_FIXED_DATE");
-                    rule.setDayMask((short) 127);
-                    if (request.getClosesOnEvery().getDays() != null && !request.getClosesOnEvery().getDays().isEmpty()) {
-                        rule.setNthOccurrence(Short.parseShort(request.getClosesOnEvery().getDays().get(0)));
-                    }
-                }
-            }
-            if (request.getClosesOnEvery().getDays() != null &&
-                    !"every_last_day_of_month".equals(type) &&
-                    !"every_month".equals(type)) {
-                short mask = 0;
-                for (String day : request.getClosesOnEvery().getDays()) {
-                    Integer index = DAY_TO_INDEX.get(day);
-                    if (index != null) {
-                        mask |= (short) (1 << index);
-                    }
-                }
-                rule.setDayMask(mask);
-            }
+            HolidayRule rule = configureHolidayRule(savedSpace, request.getClosesOnEvery().getType(), request.getClosesOnEvery().getDays());
             holidayRuleRepository.save(rule);
         }
 
         // Handle holiday overrides
         if (request.getClosesOn() != null) {
-            for (CreateSpaceRequest.ClosesOn closesOnItem : request.getClosesOn()) {
-                HolidayOverride override = new HolidayOverride();
-                override.setSpace(savedSpace);
-                override.setName(closesOnItem.getName());
-                override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
-                override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
-                override.setIsClosed(true);
-                if (closesOnItem.getDays() != null) {
-                    short mask = 0;
-                    for (String day : closesOnItem.getDays()) {
-                        Integer index = DAY_TO_INDEX.get(day);
-                        if (index != null) {
-                        mask |= (short) (1 << index);
-                        }
-                    }
-                    override.setDayMask(mask);
-                }
-                override.setPriorityWeight(0); // default
-                holidayOverrideRepository.save(override);
-            }
+            processHolidayOverrides(savedSpace, request.getClosesOn());
         }
         entityManager.flush();
         entityManager.clear();
@@ -222,111 +116,20 @@ public class SpaceService {
         }
 
         // Handle times
-        Boolean isOpen24 = request.getIsOpen24();
-        String opensAt = request.getOpensAt();
-        String closesAt = request.getClosesAt();
-        if (isOpen24 != null || (opensAt != null && closesAt != null)) {
-            if (Boolean.TRUE.equals(isOpen24)) {
-                space.setCloseStart(LocalTime.of(0, 0, 0));
-                space.setCloseEnd(LocalTime.of(0, 0, 0));
-            } else if (opensAt != null && closesAt != null) {
-                space.setCloseStart(LocalTime.parse(closesAt));
-                space.setCloseEnd(LocalTime.parse(opensAt));
-            }
-        }
+        configureOpeningTimes(space, request.getIsOpen24(), request.getOpensAt(), request.getClosesAt());
 
         // Handle images
         if (request.getMainImageUrl() != null || request.getImagesUrls() != null) {
             // Clear existing
             spacesImageRepository.deleteBySpace(space);
-            List<SpacesImage> spacesImages = new ArrayList<>();
-            int order = 1;
-            if (request.getMainImageUrl() != null) {
-                Image image = imageRepository.findByFullUrl(request.getMainImageUrl())
-                        .orElseThrow(() -> new IllegalArgumentException("Image not found: " + request.getMainImageUrl()));
-                SpacesImage si = new SpacesImage();
-                si.setSpace(space);
-                si.setImage(image);
-                si.setOrderSeq(order++);
-                spacesImages.add(si);
-            }
-            if (request.getImagesUrls() != null) {
-                for (String url : request.getImagesUrls()) {
-                    Image image = imageRepository.findByFullUrl(url)
-                            .orElseThrow(() -> new IllegalArgumentException("Image not found: " + url));
-                    SpacesImage si = new SpacesImage();
-                    si.setSpace(space);
-                    si.setImage(image);
-                    si.setOrderSeq(order++);
-                    spacesImages.add(si);
-                }
-            }
-            spacesImageRepository.saveAll(spacesImages);
+            createAndSaveSpacesImages(space, request.getMainImageUrl(), request.getImagesUrls());
         }
 
         // Handle holiday rules
         if (request.getClosesOnEvery() != null) {
             // Clear existing
             holidayRuleRepository.deleteBySpace(space);
-            HolidayRule rule = new HolidayRule();
-            rule.setSpace(space);
-            String type = request.getClosesOnEvery().getType();
-            switch (type) {
-                case "every_week" -> {
-                    rule.setFrequencyType("WEEKLY");
-                }
-                case "every_odd_week" -> {
-                    rule.setFrequencyType("BI_WEEKLY");
-                    rule.setNthOccurrence((short) 1);
-                }
-                case "every_even_week" -> {
-                    rule.setFrequencyType("BI_WEEKLY");
-                    rule.setNthOccurrence((short) 0);
-                }
-                case "every_first_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 1);
-                }
-                case "every_second_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 2);
-                }
-                case "every_third_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 3);
-                }
-                case "every_fourth_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) 4);
-                }
-                case "every_last_week" -> {
-                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
-                    rule.setNthOccurrence((short) -1);
-                }
-                case "every_last_day_of_month" -> {
-                    rule.setFrequencyType("LAST_DAY_OF_MONTH");
-                    rule.setDayMask((short) 127);
-                }
-                case "every_month" -> {
-                    rule.setFrequencyType("MONTHLY_FIXED_DATE");
-                    rule.setDayMask((short) 127);
-                    if (request.getClosesOnEvery().getDays() != null && !request.getClosesOnEvery().getDays().isEmpty()) {
-                        rule.setNthOccurrence(Short.parseShort(request.getClosesOnEvery().getDays().get(0)));
-                    }
-                }
-            }
-            if (request.getClosesOnEvery().getDays() != null &&
-                    !"every_last_day_of_month".equals(type) &&
-                    !"every_month".equals(type)) {
-                short mask = 0;
-                for (String day : request.getClosesOnEvery().getDays()) {
-                    Integer index = DAY_TO_INDEX.get(day);
-                    if (index != null) {
-                        mask |= (short) (1 << index);
-                    }
-                }
-                rule.setDayMask(mask);
-            }
+            HolidayRule rule = configureHolidayRule(space, request.getClosesOnEvery().getType(), request.getClosesOnEvery().getDays());
             holidayRuleRepository.save(rule);
         }
 
@@ -334,34 +137,150 @@ public class SpaceService {
         if (request.getClosesOn() != null) {
             // Clear existing
             holidayOverrideRepository.deleteBySpace(space);
-            List<HolidayOverride> overrides = new ArrayList<>();
-            for (UpdateSpaceRequest.ClosesOn closesOnItem : request.getClosesOn()) {
-                HolidayOverride override = new HolidayOverride();
-                override.setSpace(space);
-                override.setName(closesOnItem.getName());
-                override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
-                override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
-                override.setIsClosed(true);
-                if (closesOnItem.getDays() != null) {
-                    short mask = 0;
-                    for (String day : closesOnItem.getDays()) {
-                        Integer index = DAY_TO_INDEX.get(day);
-                        if (index != null) {
-                            mask |= (short) (1 << index);
-                        }
-                    }
-                    override.setDayMask(mask);
-                }
-                override.setPriorityWeight(0); // default
-                overrides.add(override);
-            }
-            holidayOverrideRepository.saveAll(overrides);
+            processHolidayOverridesUpdate(space, request.getClosesOn());
         }
 
         spaceRepository.save(space);
         entityManager.flush();
         entityManager.clear();
     }
+
+    private void configureOpeningTimes(Space space, Boolean isOpen24, String opensAt, String closesAt) {
+        if (Boolean.TRUE.equals(isOpen24)) {
+            space.setCloseStart(LocalTime.of(0, 0, 0));
+            space.setCloseEnd(LocalTime.of(0, 0, 0));
+        } else if (opensAt != null && closesAt != null) {
+            space.setCloseStart(LocalTime.parse(closesAt));
+            space.setCloseEnd(LocalTime.parse(opensAt));
+        }
+    }
+
+    private void createAndSaveSpacesImages(Space space, String mainImageUrl, List<String> imagesUrls) {
+        List<SpacesImage> spacesImages = new ArrayList<>();
+        int order = 1;
+        if (mainImageUrl != null) {
+            Image image = imageRepository.findByFullUrl(mainImageUrl)
+                    .orElseThrow(() -> new IllegalArgumentException("Image not found: " + mainImageUrl));
+            SpacesImage si = new SpacesImage();
+            si.setSpace(space);
+            si.setImage(image);
+            si.setOrderSeq(order++);
+            spacesImages.add(si);
+        }
+        if (imagesUrls != null) {
+            for (String url : imagesUrls) {
+                Image image = imageRepository.findByFullUrl(url)
+                        .orElseThrow(() -> new IllegalArgumentException("Image not found: " + url));
+                SpacesImage si = new SpacesImage();
+                si.setSpace(space);
+                si.setImage(image);
+                si.setOrderSeq(order++);
+                spacesImages.add(si);
+            }
+        }
+        spacesImageRepository.saveAll(spacesImages);
+    }
+
+    private HolidayRule configureHolidayRule(Space space, String type, List<String> days) {
+        HolidayRule rule = new HolidayRule();
+        rule.setSpace(space);
+        switch (type) {
+            case "every_week" -> rule.setFrequencyType("WEEKLY");
+            case "every_odd_week" -> {
+                rule.setFrequencyType("BI_WEEKLY");
+                rule.setNthOccurrence((short) 1);
+            }
+            case "every_even_week" -> {
+                rule.setFrequencyType("BI_WEEKLY");
+                rule.setNthOccurrence((short) 0);
+            }
+            case "every_first_week" -> {
+                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setNthOccurrence((short) 1);
+            }
+            case "every_second_week" -> {
+                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setNthOccurrence((short) 2);
+            }
+            case "every_third_week" -> {
+                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setNthOccurrence((short) 3);
+            }
+            case "every_fourth_week" -> {
+                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setNthOccurrence((short) 4);
+            }
+            case "every_last_week" -> {
+                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setNthOccurrence((short) -1);
+            }
+            case "every_last_day_of_month" -> {
+                rule.setFrequencyType("LAST_DAY_OF_MONTH");
+                rule.setDayMask((short) 127);
+            }
+            case "every_month" -> {
+                rule.setFrequencyType("MONTHLY_FIXED_DATE");
+                rule.setDayMask((short) 127);
+                if (days != null && !days.isEmpty()) {
+                    rule.setNthOccurrence(Short.parseShort(days.get(0)));
+                }
+            }
+        }
+        if (days != null &&
+                !"every_last_day_of_month".equals(type) &&
+                !"every_month".equals(type)) {
+            rule.setDayMask(calculateDayMask(days));
+        }
+        return rule;
+    }
+
+    private short calculateDayMask(List<String> days) {
+        short mask = 0;
+        for (String day : days) {
+            Integer index = DAY_TO_INDEX.get(day);
+            if (index != null) {
+                mask |= (short) (1 << index);
+            }
+        }
+        return mask;
+    }
+
+    private void processHolidayOverrides(Space space, List<CreateSpaceRequest.ClosesOn> closesOn) {
+        List<HolidayOverride> overrides = new ArrayList<>();
+        for (CreateSpaceRequest.ClosesOn closesOnItem : closesOn) {
+            HolidayOverride override = new HolidayOverride();
+            override.setSpace(space);
+            override.setName(closesOnItem.getName());
+            override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
+            override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+            override.setIsClosed(true);
+            if (closesOnItem.getDays() != null) {
+                override.setDayMask(calculateDayMask(closesOnItem.getDays()));
+            }
+            override.setPriorityWeight(0); // default
+            overrides.add(override);
+        }
+        holidayOverrideRepository.saveAll(overrides);
+    }
+
+    private void processHolidayOverridesUpdate(Space space, List<UpdateSpaceRequest.ClosesOn> closesOn) {
+        List<HolidayOverride> overrides = new ArrayList<>();
+        for (UpdateSpaceRequest.ClosesOn closesOnItem : closesOn) {
+            HolidayOverride override = new HolidayOverride();
+            override.setSpace(space);
+            override.setName(closesOnItem.getName());
+            override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
+            override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+            override.setIsClosed(true);
+            if (closesOnItem.getDays() != null) {
+                override.setDayMask(calculateDayMask(closesOnItem.getDays()));
+            }
+            override.setPriorityWeight(0); // default
+            overrides.add(override);
+        }
+        holidayOverrideRepository.saveAll(overrides);
+    }
+
 
     public SpaceResponse buildSpaceResponse(Long spaceId) {
         Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found with id: " + spaceId));
