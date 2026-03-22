@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.SpaceResponse;
+import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.exception.ResourceNotFoundException;
 import rent_a_space_api_clone.repository.*;
@@ -186,6 +187,180 @@ public class SpaceService {
         entityManager.flush();
         entityManager.clear();
         return savedSpace.getId();
+    }
+
+    @Transactional
+    public void updateSpace(Long spaceId, UpdateSpaceRequest request) {
+        Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found with id: " + spaceId));
+
+        // Update simple fields
+        if (request.getCategory() != null) {
+            Category category = categoryRepository.findByName(request.getCategory())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid category"));
+            space.setCategory(category);
+        }
+        if (request.getName() != null) {
+            space.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            space.setDescription(request.getDescription());
+        }
+        if (request.getPhone1() != null) {
+            space.setPhone1(request.getPhone1());
+        }
+        if (request.getPhone2() != null) {
+            space.setPhone2(request.getPhone2());
+        }
+        if (request.getEmail() != null) {
+            space.setEmail(request.getEmail());
+        }
+        if (request.getIsClosedOnPublicHolidays() != null) {
+            space.setIsClosedAtPublicHolidays(request.getIsClosedOnPublicHolidays());
+        }
+        if (request.getIsVisible() != null) {
+            space.setIsVisible(request.getIsVisible());
+        }
+
+        // Handle times
+        Boolean isOpen24 = request.getIsOpen24();
+        String opensAt = request.getOpensAt();
+        String closesAt = request.getClosesAt();
+        if (isOpen24 != null || (opensAt != null && closesAt != null)) {
+            if (Boolean.TRUE.equals(isOpen24)) {
+                space.setCloseStart(LocalTime.of(0, 0, 0));
+                space.setCloseEnd(LocalTime.of(0, 0, 0));
+            } else if (opensAt != null && closesAt != null) {
+                space.setCloseStart(LocalTime.parse(closesAt));
+                space.setCloseEnd(LocalTime.parse(opensAt));
+            }
+        }
+
+        // Handle images
+        if (request.getMainImageUrl() != null || request.getImagesUrls() != null) {
+            // Clear existing
+            spacesImageRepository.deleteBySpace(space);
+            List<SpacesImage> spacesImages = new ArrayList<>();
+            int order = 1;
+            if (request.getMainImageUrl() != null) {
+                Image image = imageRepository.findByFullUrl(request.getMainImageUrl())
+                        .orElseThrow(() -> new IllegalArgumentException("Image not found: " + request.getMainImageUrl()));
+                SpacesImage si = new SpacesImage();
+                si.setSpace(space);
+                si.setImage(image);
+                si.setOrderSeq(order++);
+                spacesImages.add(si);
+            }
+            if (request.getImagesUrls() != null) {
+                for (String url : request.getImagesUrls()) {
+                    Image image = imageRepository.findByFullUrl(url)
+                            .orElseThrow(() -> new IllegalArgumentException("Image not found: " + url));
+                    SpacesImage si = new SpacesImage();
+                    si.setSpace(space);
+                    si.setImage(image);
+                    si.setOrderSeq(order++);
+                    spacesImages.add(si);
+                }
+            }
+            spacesImageRepository.saveAll(spacesImages);
+        }
+
+        // Handle holiday rules
+        if (request.getClosesOnEvery() != null) {
+            // Clear existing
+            holidayRuleRepository.deleteBySpace(space);
+            HolidayRule rule = new HolidayRule();
+            rule.setSpace(space);
+            String type = request.getClosesOnEvery().getType();
+            switch (type) {
+                case "every_week" -> {
+                    rule.setFrequencyType("WEEKLY");
+                }
+                case "every_odd_week" -> {
+                    rule.setFrequencyType("BI_WEEKLY");
+                    rule.setNthOccurrence((short) 1);
+                }
+                case "every_even_week" -> {
+                    rule.setFrequencyType("BI_WEEKLY");
+                    rule.setNthOccurrence((short) 0);
+                }
+                case "every_first_week" -> {
+                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                    rule.setNthOccurrence((short) 1);
+                }
+                case "every_second_week" -> {
+                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                    rule.setNthOccurrence((short) 2);
+                }
+                case "every_third_week" -> {
+                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                    rule.setNthOccurrence((short) 3);
+                }
+                case "every_fourth_week" -> {
+                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                    rule.setNthOccurrence((short) 4);
+                }
+                case "every_last_week" -> {
+                    rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                    rule.setNthOccurrence((short) -1);
+                }
+                case "every_last_day_of_month" -> {
+                    rule.setFrequencyType("LAST_DAY_OF_MONTH");
+                    rule.setDayMask((short) 127);
+                }
+                case "every_month" -> {
+                    rule.setFrequencyType("MONTHLY_FIXED_DATE");
+                    rule.setDayMask((short) 127);
+                    if (request.getClosesOnEvery().getDays() != null && !request.getClosesOnEvery().getDays().isEmpty()) {
+                        rule.setNthOccurrence(Short.parseShort(request.getClosesOnEvery().getDays().get(0)));
+                    }
+                }
+            }
+            if (request.getClosesOnEvery().getDays() != null &&
+                    !"every_last_day_of_month".equals(type) &&
+                    !"every_month".equals(type)) {
+                short mask = 0;
+                for (String day : request.getClosesOnEvery().getDays()) {
+                    Integer index = DAY_TO_INDEX.get(day);
+                    if (index != null) {
+                        mask |= (short) (1 << index);
+                    }
+                }
+                rule.setDayMask(mask);
+            }
+            holidayRuleRepository.save(rule);
+        }
+
+        // Handle holiday overrides
+        if (request.getClosesOn() != null) {
+            // Clear existing
+            holidayOverrideRepository.deleteBySpace(space);
+            List<HolidayOverride> overrides = new ArrayList<>();
+            for (UpdateSpaceRequest.ClosesOn closesOnItem : request.getClosesOn()) {
+                HolidayOverride override = new HolidayOverride();
+                override.setSpace(space);
+                override.setName(closesOnItem.getName());
+                override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
+                override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+                override.setIsClosed(true);
+                if (closesOnItem.getDays() != null) {
+                    short mask = 0;
+                    for (String day : closesOnItem.getDays()) {
+                        Integer index = DAY_TO_INDEX.get(day);
+                        if (index != null) {
+                            mask |= (short) (1 << index);
+                        }
+                    }
+                    override.setDayMask(mask);
+                }
+                override.setPriorityWeight(0); // default
+                overrides.add(override);
+            }
+            holidayOverrideRepository.saveAll(overrides);
+        }
+
+        spaceRepository.save(space);
+        entityManager.flush();
+        entityManager.clear();
     }
 
     public SpaceResponse buildSpaceResponse(Long spaceId) {

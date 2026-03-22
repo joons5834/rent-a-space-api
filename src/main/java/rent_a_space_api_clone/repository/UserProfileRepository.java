@@ -17,4 +17,5 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
     void enableAdminRole(Long id);
     Optional<UserProfile> findByUserEmailAndRole(String email, Role role);
 
+    UserProfile findByUserEmail(String email);
 }

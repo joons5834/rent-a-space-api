@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.SpaceResponse;
+import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.service.SpaceService;
 
@@ -28,6 +29,17 @@ public class SpaceController {
     @GetMapping("/v0/host/spaces/{id}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSpaceOwner(#id, authentication.name))")
     public ResponseEntity<SpaceResponse> getSpaceById(@PathVariable Long id) {
+        SpaceResponse response = spaceService.buildSpaceResponse(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/v0/spaces/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSpaceOwner(#id, authentication.name))")
+    public ResponseEntity<SpaceResponse> updateSpace(@PathVariable Long id, @RequestBody UpdateSpaceRequest request) {
+        if (request.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        spaceService.updateSpace(id, request);
         SpaceResponse response = spaceService.buildSpaceResponse(id);
         return ResponseEntity.ok(response);
     }
