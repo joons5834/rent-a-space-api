@@ -18,6 +18,7 @@ import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.entity.Category;
 import rent_a_space_api_clone.entity.Space;
+import rent_a_space_api_clone.entity.SpaceImage;
 import rent_a_space_api_clone.repository.*;
 
 import java.time.LocalTime;
@@ -341,7 +342,7 @@ public class SpaceControllerTest {
         image1.setFullUrl("https://example.com/initial.png");
         imageRepository.save(image1);
 
-        var spacesImage1 = new rent_a_space_api_clone.entity.SpacesImage();
+        var spacesImage1 = new SpaceImage();
         spacesImage1.setSpace(space);
         spacesImage1.setImage(image1);
         spacesImage1.setOrderSeq(1);

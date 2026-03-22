@@ -51,7 +51,7 @@ public class Space {
     private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SpacesImage> images;
+    private List<SpaceImage> images;
 
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HolidayRule> holidayRules;

@@ -25,7 +25,7 @@ public class SpaceService {
     private final SpaceRepository spaceRepository;
     private final CategoryRepository categoryRepository;
     private final ImageRepository imageRepository;
-    private final SpacesImageRepository spacesImageRepository;
+    private final SpaceImageRepository spaceImageRepository;
     private final HolidayRuleRepository holidayRuleRepository;
     private final HolidayOverrideRepository holidayOverrideRepository;
     private final UserProfileRepository userProfileRepository;
@@ -121,7 +121,7 @@ public class SpaceService {
         // Handle images
         if (request.getMainImageUrl() != null || request.getImagesUrls() != null) {
             // Clear existing
-            spacesImageRepository.deleteBySpace(space);
+            spaceImageRepository.deleteBySpace(space);
             createAndSaveSpacesImages(space, request.getMainImageUrl(), request.getImagesUrls());
         }
 
@@ -156,29 +156,29 @@ public class SpaceService {
     }
 
     private void createAndSaveSpacesImages(Space space, String mainImageUrl, List<String> imagesUrls) {
-        List<SpacesImage> spacesImages = new ArrayList<>();
+        List<SpaceImage> spaceImages = new ArrayList<>();
         int order = 1;
         if (mainImageUrl != null) {
             Image image = imageRepository.findByFullUrl(mainImageUrl)
                     .orElseThrow(() -> new IllegalArgumentException("Image not found: " + mainImageUrl));
-            SpacesImage si = new SpacesImage();
+            SpaceImage si = new SpaceImage();
             si.setSpace(space);
             si.setImage(image);
             si.setOrderSeq(order++);
-            spacesImages.add(si);
+            spaceImages.add(si);
         }
         if (imagesUrls != null) {
             for (String url : imagesUrls) {
                 Image image = imageRepository.findByFullUrl(url)
                         .orElseThrow(() -> new IllegalArgumentException("Image not found: " + url));
-                SpacesImage si = new SpacesImage();
+                SpaceImage si = new SpaceImage();
                 si.setSpace(space);
                 si.setImage(image);
                 si.setOrderSeq(order++);
-                spacesImages.add(si);
+                spaceImages.add(si);
             }
         }
-        spacesImageRepository.saveAll(spacesImages);
+        spaceImageRepository.saveAll(spaceImages);
     }
 
     private HolidayRule configureHolidayRule(Space space, String type, List<String> days) {
@@ -296,7 +296,7 @@ public class SpaceService {
         String closes_at = space.getCloseStart() == null ? null :
                 space.getCloseStart().format(formatter);
         String main_image_url = space.getImages().stream().filter(si -> si.getOrderSeq() == 1).findFirst().map(si -> si.getImage().getFullUrl()).orElse(null);
-        List<String> images_urls = space.getImages().stream().sorted(Comparator.comparing(SpacesImage::getOrderSeq)).skip(1).map(si -> si.getImage().getFullUrl()).toList();
+        List<String> images_urls = space.getImages().stream().sorted(Comparator.comparing(SpaceImage::getOrderSeq)).skip(1).map(si -> si.getImage().getFullUrl()).toList();
         String phone1 = space.getPhone1();
         String phone2 = space.getPhone2();
         String email = space.getEmail();

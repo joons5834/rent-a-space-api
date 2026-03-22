@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "spaces_images")
 @Data
 @NoArgsConstructor
-public class SpacesImage {
+public class SpaceImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
