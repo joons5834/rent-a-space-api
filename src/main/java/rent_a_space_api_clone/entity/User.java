@@ -3,6 +3,7 @@ package rent_a_space_api_clone.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @Table(name = "users")
 @Data
 @NoArgsConstructor
+@ToString(exclude = "profiles")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

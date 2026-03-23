@@ -3,6 +3,7 @@ package rent_a_space_api_clone.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -12,6 +13,7 @@ import java.util.List;
 @Table(name = "spaces")
 @Data
 @NoArgsConstructor
+@ToString(exclude = {"subspaces", "images", "holidayRules", "holidayOverrides"})
 public class Space {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,6 +51,9 @@ public class Space {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Subspace> subspaces;
 
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SpaceImage> images;

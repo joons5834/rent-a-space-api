@@ -3,6 +3,7 @@ package rent_a_space_api_clone.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "users_profiles",
@@ -12,11 +13,12 @@ import lombok.NoArgsConstructor;
         ))
 @Data
 @NoArgsConstructor
+@ToString(exclude = "user")  // Exclude to prevent infinite recursion
 public class UserProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
