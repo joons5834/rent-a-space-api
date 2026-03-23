@@ -1,8 +1,5 @@
 package rent_a_space_api_clone.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +19,7 @@ import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.SpaceImage;
 import rent_a_space_api_clone.entity.Subspace;
 import rent_a_space_api_clone.repository.*;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -42,7 +40,8 @@ public class SpaceControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    private ObjectMapper objectMapper;
+    @Autowired
+    private JsonMapper jsonMapper;
 
     @Autowired
     private SpaceRepository spaceRepository;
@@ -84,10 +83,6 @@ public class SpaceControllerTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
         // Ensure category exists
         if (categoryRepository.findByName("meeting").isEmpty()) {
             Category category = new Category();
@@ -146,7 +141,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Test Space"))
                 .andExpect(jsonPath("$.data.description").value("A test space"))
@@ -163,7 +158,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -175,7 +170,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -188,7 +183,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -204,7 +199,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.closes_on_every.type").value("every_week"))
                 .andExpect(jsonPath("$.data.closes_on_every.days", containsInAnyOrder("Mon", "Fri")))
@@ -224,7 +219,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("24 Hour Space"))
                 .andExpect(jsonPath("$.data.is_open_24").value(true))
@@ -258,7 +253,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(jsonMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Updated Name"))
                 .andExpect(jsonPath("$.data.description").value("Updated Description"))
@@ -299,7 +294,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(jsonMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Changed Name"))
                 // Description should remain unchanged
@@ -326,7 +321,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(jsonMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -339,7 +334,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(patch("/v0/spaces/{id}", 999L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(jsonMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isForbidden());
     }
 
@@ -375,7 +370,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(jsonMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.main_image_url").value("https://example.com/image1.png"))
                 .andExpect(jsonPath("$.data.images_urls.length()").value(1))
@@ -405,7 +400,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Subspace Name"))
                 .andExpect(jsonPath("$.data.description").value("A test subspace description"))
@@ -443,7 +438,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Subspace With Images"));
 
@@ -477,7 +472,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -505,7 +500,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -525,7 +520,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", 999L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
 
@@ -567,7 +562,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
 
@@ -595,7 +590,7 @@ public class SpaceControllerTest {
 
         mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Valid Name"));
     }

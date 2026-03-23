@@ -1,6 +1,5 @@
 package rent_a_space_api_clone.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,6 +29,7 @@ import rent_a_space_api_clone.dto.UserResponse;
 import rent_a_space_api_clone.entity.Role;
 import rent_a_space_api_clone.exception.GlobalExceptionHandler;
 import rent_a_space_api_clone.service.UserService;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -64,14 +65,16 @@ class UserControllerTest {
     private UserController userController;
 
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
+
+    private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
-        objectMapper = new ObjectMapper();
+
+        jsonMapper = new JsonMapper();
     }
 
     private SignupRequest createValidSignupRequest() {
@@ -110,7 +113,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1L))
@@ -129,7 +132,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -144,7 +147,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -159,7 +162,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -174,7 +177,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -189,7 +192,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -204,7 +207,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
@@ -236,7 +239,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.user.id").value(1L))
@@ -265,7 +268,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error").value("Invalid credentials"));
@@ -290,7 +293,7 @@ class UserControllerTest {
         // When & Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isNotFound());
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));

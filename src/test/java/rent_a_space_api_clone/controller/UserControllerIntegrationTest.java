@@ -1,6 +1,5 @@
 package rent_a_space_api_clone.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +15,7 @@ import rent_a_space_api_clone.dto.LoginRequest;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.RoleProfileRequest;
 import rent_a_space_api_clone.entity.Role;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,7 +33,9 @@ class UserControllerIntegrationTest {
     private EntityManager entityManager;
 
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
+
+    @Autowired
+    private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
@@ -41,7 +43,6 @@ class UserControllerIntegrationTest {
                 .webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
-        objectMapper = new ObjectMapper();
     }
 
     private SignupRequest createValidSignupRequest(String email) {
@@ -68,7 +69,7 @@ class UserControllerIntegrationTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.email").value("integration.test@example.com"))
@@ -83,7 +84,7 @@ class UserControllerIntegrationTest {
 
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(firstUser)))
+                        .content(jsonMapper.writeValueAsString(firstUser)))
                 .andExpect(status().isCreated());
 
         // When - Try to create another user with the same email
@@ -92,7 +93,7 @@ class UserControllerIntegrationTest {
         // Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(duplicateUser)))
+                        .content(jsonMapper.writeValueAsString(duplicateUser)))
                 .andExpect(status().isConflict());
     }
 
@@ -105,7 +106,7 @@ class UserControllerIntegrationTest {
         // When & Then
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("host@example.com"))
                 .andExpect(jsonPath("$.role").value("HOST"));
@@ -119,7 +120,7 @@ class UserControllerIntegrationTest {
 
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated());
 
         // Clear the persistence context to force fresh fetch
@@ -135,7 +136,7 @@ class UserControllerIntegrationTest {
         // Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.user.email").value("login.test@example.com"))
@@ -156,7 +157,7 @@ class UserControllerIntegrationTest {
         // When & Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -167,7 +168,7 @@ class UserControllerIntegrationTest {
 
         mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated());
 
         // When - Try to login with wrong password
@@ -179,7 +180,7 @@ class UserControllerIntegrationTest {
         // Then
         mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized());
     }
 }

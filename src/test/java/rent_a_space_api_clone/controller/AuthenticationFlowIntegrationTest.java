@@ -1,7 +1,5 @@
 
 package rent_a_space_api_clone.controller;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +16,7 @@ import rent_a_space_api_clone.dto.LoginRequest;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.RoleProfileRequest;
 import rent_a_space_api_clone.entity.Role;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
@@ -38,7 +37,9 @@ class AuthenticationFlowIntegrationTest {
     private EntityManager entityManager;
 
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
+
+    @Autowired
+    private JsonMapper jsonMapper;
 
     @BeforeEach
     void setUp() {
@@ -46,7 +47,6 @@ class AuthenticationFlowIntegrationTest {
                 .webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
-        objectMapper = new ObjectMapper();
     }
 
     private SignupRequest createValidSignupRequest(String email) {
@@ -74,7 +74,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/users")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("flow.test@example.com"));
 
@@ -90,7 +90,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/login")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.email").value("flow.test@example.com"))
                 .andExpect(jsonPath("$.data.user.id").exists())
@@ -116,7 +116,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/users")
                         .session(renterSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(renterRequest)))
+                        .content(jsonMapper.writeValueAsString(renterRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("RENTER"));
 
@@ -127,7 +127,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/users")
                         .session(hostSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(hostRequest)))
+                        .content(jsonMapper.writeValueAsString(hostRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("HOST"));
 
@@ -139,7 +139,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/login")
                         .session(renterSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(renterLogin)))
+                        .content(jsonMapper.writeValueAsString(renterLogin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.roles[0].role_name").value("RENTER"));
 
@@ -149,7 +149,7 @@ class AuthenticationFlowIntegrationTest {
         mockMvc.perform(post("/v0/login")
                         .session(hostSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(hostLogin)))
+                        .content(jsonMapper.writeValueAsString(hostLogin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.roles[0].role_name").value("HOST"));
     }

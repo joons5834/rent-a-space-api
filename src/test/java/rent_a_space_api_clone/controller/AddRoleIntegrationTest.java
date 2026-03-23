@@ -1,8 +1,4 @@
 package rent_a_space_api_clone.controller;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +15,7 @@ import org.springframework.web.context.WebApplicationContext;
 import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.entity.Role;
 import rent_a_space_api_clone.service.UserService;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -38,7 +35,9 @@ class AddRoleIntegrationTest {
 
     private MockMvc mockMvc;
 
-    private ObjectMapper objectMapper;
+    @Autowired
+    private JsonMapper jsonMapper;
+
     @Autowired
     private UserService userService;
 
@@ -48,10 +47,6 @@ class AddRoleIntegrationTest {
                 .webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
-        objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        // (선택) 날짜를 배열 형태([2023, 10, 25])가 아닌 문자열("2023-10-25...")로 출력하고 싶을 때
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     private SignupRequest createSignupRequest(String email, Role role) {
@@ -86,7 +81,7 @@ class AddRoleIntegrationTest {
 
         MvcResult result = mockMvc.perform(post("/v0/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                        .content(jsonMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -98,13 +93,13 @@ class AddRoleIntegrationTest {
 
         MvcResult result = mockMvc.perform(post("/v0/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                        .content(jsonMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
 
-        UserResponse userResponse = objectMapper.readValue(responseBody, UserResponse.class);
+        UserResponse userResponse = jsonMapper.readValue(responseBody, UserResponse.class);
 
         Long id = userResponse.getId();
 
@@ -129,7 +124,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(userId))
                 .andExpect(jsonPath("$.email").value("owner@example.com"))
@@ -153,7 +148,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", regularUserId)
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(regularUserId))
                 .andExpect(jsonPath("$.email").value("regular@example.com"))
@@ -174,7 +169,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", user2Id)
                         .session(user1Session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isForbidden());
     }
 
@@ -188,7 +183,7 @@ class AddRoleIntegrationTest {
         // When & Then - Try to add role without authentication
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -204,7 +199,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("User already has role: HOST"));
     }
@@ -222,7 +217,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", nonExistentUserId)
                         .session(adminSession)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isForbidden());
     }
 
@@ -244,7 +239,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.role").value("Role is required"));
     }
@@ -263,7 +258,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.roleProfile").value("Role profile is required"));
     }
@@ -280,7 +275,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.['roleProfile.nickname']").exists());
     }
@@ -298,7 +293,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.['roleProfile.nickname']").exists());
     }
@@ -316,7 +311,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.['roleProfile.bio']").exists());
     }
@@ -333,7 +328,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(addRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(addRoleRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role_profile.nickname").value("Nick"))
                 .andExpect(jsonPath("$.role_profile.bio").isEmpty());
@@ -351,7 +346,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(hostRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(hostRoleRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("HOST"));
 
@@ -361,7 +356,7 @@ class AddRoleIntegrationTest {
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(adminRoleRequest)))
+                        .content(jsonMapper.writeValueAsString(adminRoleRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("ADMIN"));
     }
