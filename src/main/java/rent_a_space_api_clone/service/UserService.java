@@ -7,7 +7,7 @@ import rent_a_space_api_clone.dto.AddRoleRequest;
 import rent_a_space_api_clone.dto.LoginResponse;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.UserResponse;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.entity.User;
 import rent_a_space_api_clone.entity.UserProfile;
 import rent_a_space_api_clone.exception.RoleAlreadyExistsException;

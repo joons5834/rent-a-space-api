@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 
 @Data
 public class SignupRequest {

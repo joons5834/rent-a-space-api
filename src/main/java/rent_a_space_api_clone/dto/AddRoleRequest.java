@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 
 @Data
 public class AddRoleRequest {

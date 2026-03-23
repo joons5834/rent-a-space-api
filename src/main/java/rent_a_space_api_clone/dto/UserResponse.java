@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NoArgsConstructor;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 
 import java.time.LocalDateTime;
 

@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 import rent_a_space_api_clone.dto.*;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.service.UserService;
 import tools.jackson.databind.json.JsonMapper;
 

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import rent_a_space_api_clone.enums.Role;
 
 @Entity
 @Table(name = "users_profiles",

@@ -14,7 +14,7 @@ import org.springframework.web.context.WebApplicationContext;
 import rent_a_space_api_clone.dto.LoginRequest;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.RoleProfileRequest;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;

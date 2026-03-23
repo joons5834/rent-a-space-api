@@ -18,6 +18,7 @@ import rent_a_space_api_clone.entity.Category;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.SpaceImage;
 import rent_a_space_api_clone.entity.Subspace;
+import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -104,7 +105,7 @@ public class SpaceControllerTest {
             userRepository.save(user);
             var profile = new rent_a_space_api_clone.entity.UserProfile();
             profile.setUser(user);
-            profile.setRole(rent_a_space_api_clone.entity.Role.HOST);
+            profile.setRole(Role.HOST);
             profile.setEnabled(true);
             profile.setNickname("TestHost");
             userProfileRepository.save(profile);
@@ -536,7 +537,7 @@ public class SpaceControllerTest {
 
         var otherProfile = new rent_a_space_api_clone.entity.UserProfile();
         otherProfile.setUser(otherUser);
-        otherProfile.setRole(rent_a_space_api_clone.entity.Role.HOST);
+        otherProfile.setRole(Role.HOST);
         otherProfile.setEnabled(true);
         otherProfile.setNickname("OtherHost");
         userProfileRepository.save(otherProfile);

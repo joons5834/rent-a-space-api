@@ -3,7 +3,7 @@ package rent_a_space_api_clone.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import rent_a_space_api_clone.entity.Role;
+import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.entity.UserProfile;
 
 import java.util.Optional;
