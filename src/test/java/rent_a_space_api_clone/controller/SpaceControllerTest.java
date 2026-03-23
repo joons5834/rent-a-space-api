@@ -15,10 +15,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import rent_a_space_api_clone.dto.CreateSpaceRequest;
+import rent_a_space_api_clone.dto.CreateSubspaceRequest;
 import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.entity.Category;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.SpaceImage;
+import rent_a_space_api_clone.entity.Subspace;
 import rent_a_space_api_clone.repository.*;
 
 import java.time.LocalTime;
@@ -55,10 +57,24 @@ public class SpaceControllerTest {
     private UserProfileRepository userProfileRepository;
 
     @Autowired
+    private SubspaceRepository subspaceRepository;
+
+    @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SubspaceImageRepository subspaceImageRepository;
+
+    @Autowired
+    private SpaceImageRepository spaceImageRepository;
 
     @AfterEach
     void tearDown() {
+        // Delete in correct order to respect foreign key constraints
+        // Child entities first, then parents
+        subspaceImageRepository.deleteAll();
+        spaceImageRepository.deleteAll();
+        subspaceRepository.deleteAll();
         spaceRepository.deleteAll();
         categoryRepository.deleteAll();
         imageRepository.deleteAll();
@@ -364,5 +380,223 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.main_image_url").value("https://example.com/image1.png"))
                 .andExpect(jsonPath("$.data.images_urls.length()").value(1))
                 .andExpect(jsonPath("$.data.images_urls[0]").value("https://example.com/image2.png"));
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_Success() throws Exception {
+        // Create a space to add subspace to
+        Space space = new Space();
+        space.setName("Test Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "Subspace Name",
+                "A test subspace description",
+                null,
+                null,
+                1,
+                8,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("Subspace Name"))
+                .andExpect(jsonPath("$.data.description").value("A test subspace description"))
+                .andExpect(jsonPath("$.data.min_hours").value(1))
+                .andExpect(jsonPath("$.data.max_hours").value(8))
+                .andExpect(jsonPath("$.data.is_visible").value(true));
+
+        // Verify subspace was created and linked to space
+        List<Subspace> subspaces = subspaceRepository.findAll();
+        assertThat(subspaces).hasSize(1);
+        assertThat(subspaces.get(0).getName()).isEqualTo("Subspace Name");
+        assertThat(subspaces.get(0).getSpace().getId()).isEqualTo(spaceId);
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_WithImages() throws Exception {
+        // Create a space
+        Space space = new Space();
+        space.setName("Test Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "Subspace With Images",
+                "Description",
+                "https://example.com/image1.png",
+                List.of("https://example.com/image2.png"),
+                2,
+                10,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("Subspace With Images"));
+
+        // Verify images were created
+        List<Subspace> subspaces = subspaceRepository.findAll();
+        assertThat(subspaces).hasSize(1);
+        assertThat(subspaces.get(0).getImages()).hasSize(2);
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_InvalidRequest_MissingName() throws Exception {
+        // Create a space
+        Space space = new Space();
+        space.setName("Test Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        // Create request without required name
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                null, // name is @NotBlank
+                "Description",
+                null,
+                null,
+                1,
+                8,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_InvalidRequest_BlankName() throws Exception {
+        // Create a space
+        Space space = new Space();
+        space.setName("Test Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        // Create request with blank name
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "   ", // blank name
+                "Description",
+                null,
+                null,
+                1,
+                8,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_SpaceNotFound() throws Exception {
+        // Try to create subspace for non-existing space
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "Subspace Name",
+                "Description",
+                null,
+                null,
+                1,
+                8,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", 999L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_SpaceNotOwnedByHost() throws Exception {
+        // Create another host user
+        var otherUser = new rent_a_space_api_clone.entity.User();
+        otherUser.setEmail("other@example.com");
+        otherUser.setPassword("password");
+        otherUser.setEnabled(true);
+        userRepository.save(otherUser);
+
+        var otherProfile = new rent_a_space_api_clone.entity.UserProfile();
+        otherProfile.setUser(otherUser);
+        otherProfile.setRole(rent_a_space_api_clone.entity.Role.HOST);
+        otherProfile.setEnabled(true);
+        otherProfile.setNickname("OtherHost");
+        userProfileRepository.save(otherProfile);
+
+        // Create a space owned by other host
+        Space space = new Space();
+        space.setName("Other Host Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(otherProfile);
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        // Try to create subspace (currently authenticated as host@example.com)
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "Subspace Name",
+                "Description",
+                null,
+                null,
+                1,
+                8,
+                true
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Transactional
+    void createSubspace_EmptyRequest() throws Exception {
+        // Create a space
+        Space space = new Space();
+        space.setName("Test Space");
+        space.setCategory(categoryRepository.findByName("meeting").get());
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        space.setIsVisible(true);
+        Long spaceId = spaceRepository.save(space).getId();
+
+        // Send empty/minimal request (only name is required)
+        CreateSubspaceRequest request = new CreateSubspaceRequest(
+                "Valid Name",
+                null,
+                null,
+                null,
+                0,
+                0,
+                null
+        );
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("Valid Name"));
     }
 }

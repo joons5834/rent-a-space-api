@@ -6,9 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import rent_a_space_api_clone.dto.CreateSpaceRequest;
-import rent_a_space_api_clone.dto.SpaceResponse;
-import rent_a_space_api_clone.dto.UpdateSpaceRequest;
+import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.exception.ResourceNotFoundException;
 import rent_a_space_api_clone.repository.*;
@@ -29,6 +27,8 @@ public class SpaceService {
     private final HolidayRuleRepository holidayRuleRepository;
     private final HolidayOverrideRepository holidayOverrideRepository;
     private final UserProfileRepository userProfileRepository;
+    private final SubspaceRepository subspaceRepository;
+    private final SubspaceImageRepository subspaceImageRepository;
 
     private static final Map<String, Integer> DAY_TO_INDEX = Map.of(
             "Sun", 0, "Mon", 1, "Tue", 2, "Wed", 3, "Thu", 4, "Fri", 5, "Sat", 6
@@ -346,5 +346,72 @@ public class SpaceService {
                 .map((space) -> space.getHostProfile().getUser()
                         .getEmail().equals(username))
                 .orElse(false);
+    }
+
+    @Transactional
+    public Long createSubspace(Long id, CreateSubspaceRequest request) {
+        Subspace subspace = new Subspace();
+        subspace.setName(request.name());
+        subspace.setDescription(request.description());
+        subspace.setMinHours(request.minHours());
+        subspace.setMaxHours(request.maxHours());
+        subspace.setIsVisible(request.isVisible());
+        Space space = spaceRepository.findById(id).orElseThrow();
+        subspace.setSpace(space);
+        Subspace savedSubspace = subspaceRepository.save(subspace);
+
+        List<String> imageUrls = request.imagesUrls();
+        if (imageUrls != null) {
+            imageUrls.add(0, request.mainImageUrl());
+            List<SubspaceImage> subspaceImages = createSubspaceImages(imageUrls,
+                    subspace);
+            subspaceImageRepository.saveAll(subspaceImages);
+        }
+
+        entityManager.flush();
+        entityManager.clear();
+        return savedSubspace.getId();
+    }
+
+    private List<SubspaceImage> createSubspaceImages(List<String> urls,
+                                                     Subspace subspace) {
+        List<SubspaceImage> subspaceImages = new ArrayList<>();
+        int order = 0;
+        for (String url : urls) {
+            SubspaceImage subspaceImage = new SubspaceImage();
+            subspaceImage.setSubspace(subspace);
+            Image image = imageRepository.findByFullUrl(url).orElseThrow();
+            subspaceImage.setImage(image);
+            subspaceImage.setOrderSeq(order++);
+            subspaceImages.add(subspaceImage);
+        }
+        return subspaceImages;
+    }
+
+    public SubspaceResponse buildSubspaceResponse(Long subspaceId) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow();
+        Long id = subspace.getId();
+        String name = subspace.getName();
+        String description = subspace.getDescription();
+        List<SubspaceImage> subspacesImages = subspace.getImages();
+        String mainImageUrl = null;
+        List<String> imageUrls = null;
+        if (subspacesImages != null && !subspacesImages.isEmpty()) {
+            mainImageUrl = subspacesImages
+                    .get(0).getImage().getFullUrl();
+            imageUrls = subspacesImages
+                    .stream()
+                    .skip(1)
+                    .map((image) -> image.getImage().getFullUrl())
+                    .toList();
+        }
+        Integer minHours = subspace.getMinHours();
+        Integer maxHours = subspace.getMaxHours();
+        Boolean isVisible = subspace.getIsVisible();
+        SubspaceResponse.SubspaceData subspaceData =
+                new SubspaceResponse.SubspaceData(id, name, description,
+                mainImageUrl, imageUrls, minHours,
+                maxHours, isVisible);
+        return new SubspaceResponse(subspaceData);
     }
 }
