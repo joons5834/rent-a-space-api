@@ -3,6 +3,7 @@ package rent_a_space_api_clone.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import rent_a_space_api_clone.enums.HolidayFrequencyType;
 
 @Entity
 @Table(name = "holiday_rule")
@@ -18,7 +19,8 @@ public class HolidayRule {
     private Space space;
 
     @Column(name = "frequency_type")
-    private String frequencyType;
+    @Enumerated(EnumType.STRING)
+    private HolidayFrequencyType frequencyType;
 
     @Column(name = "day_mask")
     private Short dayMask;

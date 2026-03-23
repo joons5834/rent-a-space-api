@@ -17,6 +17,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static rent_a_space_api_clone.enums.HolidayFrequencyType.*;
+
 @Service
 @RequiredArgsConstructor
 public class SpaceService {
@@ -186,41 +188,41 @@ public class SpaceService {
         HolidayRule rule = new HolidayRule();
         rule.setSpace(space);
         switch (type) {
-            case "every_week" -> rule.setFrequencyType("WEEKLY");
+            case "every_week" -> rule.setFrequencyType(WEEKLY);
             case "every_odd_week" -> {
-                rule.setFrequencyType("BI_WEEKLY");
+                rule.setFrequencyType(BI_WEEKLY);
                 rule.setNthOccurrence((short) 1);
             }
             case "every_even_week" -> {
-                rule.setFrequencyType("BI_WEEKLY");
+                rule.setFrequencyType(BI_WEEKLY);
                 rule.setNthOccurrence((short) 0);
             }
             case "every_first_week" -> {
-                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setFrequencyType(MONTHLY_CALENDAR_WEEK);
                 rule.setNthOccurrence((short) 1);
             }
             case "every_second_week" -> {
-                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setFrequencyType(MONTHLY_CALENDAR_WEEK);
                 rule.setNthOccurrence((short) 2);
             }
             case "every_third_week" -> {
-                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setFrequencyType(MONTHLY_CALENDAR_WEEK);
                 rule.setNthOccurrence((short) 3);
             }
             case "every_fourth_week" -> {
-                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setFrequencyType(MONTHLY_CALENDAR_WEEK);
                 rule.setNthOccurrence((short) 4);
             }
             case "every_last_week" -> {
-                rule.setFrequencyType("MONTHLY_CALENDAR_WEEK");
+                rule.setFrequencyType(MONTHLY_CALENDAR_WEEK);
                 rule.setNthOccurrence((short) -1);
             }
             case "every_last_day_of_month" -> {
-                rule.setFrequencyType("LAST_DAY_OF_MONTH");
+                rule.setFrequencyType(LAST_DAY_OF_MONTH);
                 rule.setDayMask((short) 127);
             }
             case "every_month" -> {
-                rule.setFrequencyType("MONTHLY_FIXED_DATE");
+                rule.setFrequencyType(MONTHLY_FIXED_DATE);
                 rule.setDayMask((short) 127);
                 if (days != null && !days.isEmpty()) {
                     rule.setNthOccurrence(Short.parseShort(days.get(0)));
@@ -307,9 +309,9 @@ public class SpaceService {
         if (space.getHolidayRules() != null && !space.getHolidayRules().isEmpty()) {
             HolidayRule rule = space.getHolidayRules().get(0);
             String type = switch (rule.getFrequencyType()) {
-                case "WEEKLY" -> "every_week";
-                case "BI_WEEKLY" -> rule.getNthOccurrence() == 1 ? "every_odd_week" : "every_even_week";
-                case "MONTHLY_CALENDAR_WEEK" -> switch (rule.getNthOccurrence().intValue()) {
+                case WEEKLY -> "every_week";
+                case BI_WEEKLY -> rule.getNthOccurrence() == 1 ? "every_odd_week" : "every_even_week";
+                case MONTHLY_CALENDAR_WEEK -> switch (rule.getNthOccurrence().intValue()) {
                     case 1 -> "every_first_week";
                     case 2 -> "every_second_week";
                     case 3 -> "every_third_week";
@@ -317,8 +319,8 @@ public class SpaceService {
                     case -1 -> "every_last_week";
                     default -> null;
                 };
-                case "LAST_DAY_OF_MONTH" -> "every_last_day_of_month";
-                case "MONTHLY_FIXED_DATE" -> "every_month";
+                case LAST_DAY_OF_MONTH -> "every_last_day_of_month";
+                case MONTHLY_FIXED_DATE -> "every_month";
                 default -> null;
             };
             List<String> days = decodeDays(rule.getDayMask());
