@@ -1,5 +1,6 @@
 package rent_a_space_api_clone.dto;
 
+import java.time.ZoneId;
 import java.util.List;
 
 public record SpaceResponse(SpaceData data) {
@@ -19,7 +20,8 @@ public record SpaceResponse(SpaceData data) {
             Boolean is_closed_on_public_holidays,
             ClosesOnEvery closes_on_every,
             List<ClosesOn> closes_on,
-            Boolean is_visible
+            Boolean is_visible,
+            ZoneId timezone
     ) {}
 
     public record ClosesOnEvery(

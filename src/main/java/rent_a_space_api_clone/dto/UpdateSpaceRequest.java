@@ -3,6 +3,7 @@ package rent_a_space_api_clone.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.time.ZoneId;
 import java.util.List;
 
 @Data
@@ -52,6 +53,9 @@ public class UpdateSpaceRequest {
     @JsonProperty("is_visible")
     private Boolean isVisible;
 
+    @JsonProperty("timezone")
+    private ZoneId timezone;
+
     @Data
     public static class ClosesOnEvery {
         @JsonProperty("type")
@@ -78,6 +82,6 @@ public class UpdateSpaceRequest {
                 mainImageUrl == null && imagesUrls == null &&
                 phone1 == null && phone2 == null && email == null &&
                 isClosedOnPublicHolidays == null && closesOnEvery == null &&
-                closesOn == null && isVisible == null;
+                closesOn == null && isVisible == null && timezone == null;
     }
 }

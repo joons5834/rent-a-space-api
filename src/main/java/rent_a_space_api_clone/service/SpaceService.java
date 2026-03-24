@@ -14,6 +14,7 @@ import rent_a_space_api_clone.repository.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -61,6 +62,9 @@ public class SpaceService {
         space.setEmail(request.getEmail());
         space.setIsClosedAtPublicHolidays(request.getIsClosedOnPublicHolidays());
         space.setIsVisible(request.getIsVisible() != null ? request.getIsVisible() : false);
+
+        ZoneId timezone = request.getTimezone();
+        space.setTimezone(timezone);
 
         // Handle times
         configureOpeningTimes(space, request.getIsOpen24(), request.getOpensAt(), request.getClosesAt());
@@ -116,6 +120,9 @@ public class SpaceService {
         }
         if (request.getIsVisible() != null) {
             space.setIsVisible(request.getIsVisible());
+        }
+        if (request.getTimezone() != null) {
+            space.setTimezone(request.getTimezone());
         }
 
         // Handle times
@@ -305,6 +312,7 @@ public class SpaceService {
         String email = space.getEmail();
         Boolean is_closed_on_public_holidays = space.getIsClosedAtPublicHolidays();
         Boolean is_visible = space.getIsVisible();
+        ZoneId timezone = space.getTimezone();
         SpaceResponse.ClosesOnEvery closes_on_every = null;
         if (space.getHolidayRules() != null && !space.getHolidayRules().isEmpty()) {
             HolidayRule rule = space.getHolidayRules().get(0);
@@ -329,7 +337,7 @@ public class SpaceService {
         List<SpaceResponse.ClosesOn> closes_on = space.getHolidayOverrides().stream()
                 .map(override -> new SpaceResponse.ClosesOn(override.getName(), override.getStartsAt().toString(), override.getEndsAt().toString(), decodeDays(override.getDayMask())))
                 .toList();
-        SpaceResponse.SpaceData data = new SpaceResponse.SpaceData(id, category, name, description, is_open_24, opens_at, closes_at, main_image_url, images_urls, phone1, phone2, email, is_closed_on_public_holidays, closes_on_every, closes_on, is_visible);
+        SpaceResponse.SpaceData data = new SpaceResponse.SpaceData(id, category, name, description, is_open_24, opens_at, closes_at, main_image_url, images_urls, phone1, phone2, email, is_closed_on_public_holidays, closes_on_every, closes_on, is_visible, timezone);
         return new SpaceResponse(data);
     }
 

@@ -29,6 +29,7 @@ CREATE TABLE "spaces" (
   "close_end" time,
   "is_closed_at_public_holidays" bool,
   "is_visible" bool,
+  "timezone" varchar,
   "deleted_at" timestamp with time zone
 );
 
@@ -156,6 +157,8 @@ COMMENT ON COLUMN "spaces"."email" IS 'allows different contacts for different s
 COMMENT ON COLUMN "spaces"."close_start" IS 'The time space closes';
 
 COMMENT ON COLUMN "spaces"."close_end" IS 'The time space opens. If `close_start` and `close_end` equals, the space stays open 24 hours a day.';
+
+COMMENT ON COLUMN "spaces"."timezone" IS 'The time zone name listed in the pg_timezone_names view. Use full region name if possible';
 
 COMMENT ON COLUMN "reservations"."renter_name" IS 'Don''t use `users` table because 1. prevent sharing the latest renter info. to hosts 2. allow renters to reserve a space under a different person';
 

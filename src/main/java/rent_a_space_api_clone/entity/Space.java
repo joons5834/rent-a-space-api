@@ -7,6 +7,7 @@ import lombok.ToString;
 
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Entity
@@ -48,6 +49,8 @@ public class Space {
 
     @Column(name = "is_visible")
     private Boolean isVisible;
+
+    private ZoneId timezone;
 
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;

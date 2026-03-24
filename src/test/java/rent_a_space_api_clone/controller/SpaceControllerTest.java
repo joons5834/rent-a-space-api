@@ -23,6 +23,7 @@ import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,6 +140,7 @@ public class SpaceControllerTest {
         request.setEmail("space@example.com");
         request.setIsClosedOnPublicHolidays(false);
         request.setIsVisible(true);
+        request.setTimezone(ZoneId.of("Asia/Seoul"));
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +149,8 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.name").value("Test Space"))
                 .andExpect(jsonPath("$.data.description").value("A test space"))
                 .andExpect(jsonPath("$.data.phone1").value("1234567890"))
-                .andExpect(jsonPath("$.data.category").value("meeting"));
+                .andExpect(jsonPath("$.data.category").value("meeting"))
+                .andExpect(jsonPath("$.data.timezone").value("Asia/Seoul"));
 
         assertThat(spaceRepository.findAll()).hasSize(1);
     }
@@ -168,6 +171,7 @@ public class SpaceControllerTest {
         CreateSpaceRequest request = new CreateSpaceRequest();
         request.setCategory("invalid");
         request.setName("Test Space");
+        request.setTimezone(ZoneId.of("Asia/Seoul"));
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -181,6 +185,7 @@ public class SpaceControllerTest {
         request.setCategory("meeting");
         request.setName("Test Space");
         request.setMainImageUrl("https://nonexistent.com/image.png");
+        request.setTimezone(ZoneId.of("Asia/Seoul"));
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -197,6 +202,7 @@ public class SpaceControllerTest {
         request.setClosesOnEvery(new CreateSpaceRequest.ClosesOnEvery());
         request.getClosesOnEvery().setType("every_week");
         request.getClosesOnEvery().setDays(List.of("Mon", "Fri"));
+        request.setTimezone(ZoneId.of("Asia/Seoul"));
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -217,6 +223,7 @@ public class SpaceControllerTest {
         request.setName("24 Hour Space");
         request.setIsOpen24(true);
         request.setIsVisible(true);
+        request.setTimezone(ZoneId.of("Asia/Seoul"));
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)

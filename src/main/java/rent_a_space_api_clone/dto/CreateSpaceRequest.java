@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.time.ZoneId;
 import java.util.List;
 
 @Data
@@ -55,6 +56,9 @@ public class CreateSpaceRequest {
 
     @JsonProperty("is_visible")
     private Boolean isVisible;
+
+    @JsonProperty("timezone")
+    private ZoneId timezone;
 
     @Data
     public static class ClosesOnEvery {
