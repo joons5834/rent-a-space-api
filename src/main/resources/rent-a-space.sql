@@ -4,7 +4,7 @@ CREATE TABLE "users" (
   "password" varchar NOT NULL,
   "phone" varchar,
   "enabled" bool,
-  "created_at" timestamp
+  "created_at" timestamp with time zone
 );
 
 CREATE TABLE "users_profiles" (
@@ -29,7 +29,7 @@ CREATE TABLE "spaces" (
   "close_end" time,
   "is_closed_at_public_holidays" bool,
   "is_visible" bool,
-  "deleted_at" timestamp
+  "deleted_at" timestamp with time zone
 );
 
 CREATE TABLE "subspaces" (
@@ -40,7 +40,7 @@ CREATE TABLE "subspaces" (
   "min_hours" integer,
   "max_hours" integer,
   "is_visible" bool,
-  "deleted_at" timestamp
+  "deleted_at" timestamp with time zone
 );
 
 CREATE TABLE "categories" (
@@ -59,9 +59,9 @@ CREATE TABLE "reservations" (
   "renter_phone" varchar,
   "renter_email" varchar,
   "custom_request" varchar,
-  "created_at" timestamp NOT NULL,
-  "status_updated_at" timestamp,
-  "cancelled_at" timestamp,
+  "created_at" timestamp with time zone NOT NULL,
+  "status_updated_at" timestamp with time zone,
+  "cancelled_at" timestamp with time zone,
   "cancelled_by" integer
 );
 

@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -27,9 +27,9 @@ public class User {
     private String phone;
     
     private Boolean enabled;
-    
+
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<UserProfile> profiles;

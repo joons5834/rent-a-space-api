@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.NoArgsConstructor;
 import rent_a_space_api_clone.enums.Role;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @AllArgsConstructor
@@ -17,7 +17,7 @@ public class UserResponse {
     private String phone;
     private Boolean enabled;
     @JsonProperty("created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     private Role role;
     @JsonProperty("role_profile")
     private RoleProfileResponse roleProfile;

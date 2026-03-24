@@ -15,7 +15,7 @@ import rent_a_space_api_clone.exception.UserAlreadyExistsException;
 import rent_a_space_api_clone.repository.UserProfileRepository;
 import rent_a_space_api_clone.repository.UserRepository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,7 +71,7 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
         user.setEnabled(true);
-        user.setCreatedAt(LocalDateTime.now());  // Explicit timing
+        user.setCreatedAt(OffsetDateTime.now());  // Explicit timing
 
 
         User savedUser = userRepository.save(user);
