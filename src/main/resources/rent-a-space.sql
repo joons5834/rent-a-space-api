@@ -54,8 +54,8 @@ CREATE TABLE "reservations" (
   "subspace_id" integer NOT NULL,
   "renter_profile_id" integer NOT NULL,
   "timezone" varchar NOT NULL,
-  "start" timestamp with time zone NOT NULL,
-  "end" timestamp with time zone NOT NULL,
+  "starts_at" timestamp with time zone NOT NULL,
+  "ends_at" timestamp with time zone NOT NULL,
   "status" varchar NOT NULL,
   "renter_name" varchar,
   "renter_phone" varchar,
@@ -133,7 +133,7 @@ CREATE INDEX ON "reservations" ("created_at");
 
 CREATE INDEX ON "reservations" ("cancelled_by");
 
-CREATE INDEX ON "reservations" ("subspace_id", "start", "end");
+CREATE INDEX ON "reservations" ("subspace_id", "starts_at", "ends_at");
 
 CREATE INDEX ON "holiday_rule" ("space_id");
 
