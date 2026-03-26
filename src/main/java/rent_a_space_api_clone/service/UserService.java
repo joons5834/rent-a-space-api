@@ -43,6 +43,7 @@ public class UserService {
     
     private LoginResponse mapToLoginResponse(User user) {
         List<LoginResponse.RoleData> roles = user.getProfiles().stream()
+                .filter(UserProfile::getEnabled)
                 .map(profile -> new LoginResponse.RoleData(
                         profile.getRole(),
                         profile.getNickname()
