@@ -18,12 +18,7 @@ import rent_a_space_api_clone.repository.SpaceRepository;
 import rent_a_space_api_clone.repository.SubspaceRepository;
 import rent_a_space_api_clone.repository.UserProfileRepository;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 
 @Service
@@ -36,16 +31,38 @@ public class ReservationService {
     private final UserProfileRepository userProfileRepository;
     private final HolidayGeneratorService holidayGeneratorService;
 
+    private final Clock clock;
+
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
         Subspace subspace = subspaceRepository.findById(request.subspaceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Subspace not found with id: " + request.subspaceId()));
 
+        // Check soft-delete
+        if (subspace.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("Subspace not found with id: " + request.subspaceId());
+        }
+
         Space space = subspace.getSpace();
+
+        // Check visibility
+        if (Boolean.FALSE.equals(space.getIsVisible())) {
+            throw new IllegalStateException("Space is not available for reservation");
+        }
+        if (Boolean.FALSE.equals(subspace.getIsVisible())) {
+            throw new IllegalStateException("Subspace is not available for reservation");
+        }
+
         ZoneId spaceTimezone = space.getTimezone();
 
         ZonedDateTime startInSpaceTz = request.startsAt().atZone(spaceTimezone);
         ZonedDateTime endInSpaceTz = request.endsAt().atZone(spaceTimezone);
+
+        // Check start time is in the future (in the space's timezone)
+        ZonedDateTime nowInSpaceTz = ZonedDateTime.now(clock);
+        if (!startInSpaceTz.isAfter(nowInSpaceTz)) {
+            throw new IllegalArgumentException("Reservation start time must be in the future");
+        }
 
         validateNotOverlapping(subspace.getId(), startInSpaceTz, endInSpaceTz);
         validateSpaceOpen(space, startInSpaceTz, endInSpaceTz);
@@ -53,6 +70,11 @@ public class ReservationService {
         validateDuration(subspace, startInSpaceTz, endInSpaceTz);
 
         UserProfile renterProfile = getRenterProfile();
+
+        // Check renter is enabled
+        if (Boolean.FALSE.equals(renterProfile.getEnabled())) {
+            throw new IllegalStateException("Renter profile is not active");
+        }
 
         Reservation reservation = new Reservation();
         reservation.setSubspace(subspace);
@@ -65,7 +87,7 @@ public class ReservationService {
         reservation.setRenterPhone(request.renterPhone());
         reservation.setRenterEmail(request.renterEmail());
         reservation.setCustomRequest(request.customRequest());
-        reservation.setCreatedAt(OffsetDateTime.now());
+        reservation.setCreatedAt(OffsetDateTime.now(clock));
 
         Reservation saved = reservationRepository.save(reservation);
         return new ReservationResponse(new ReservationResponse.ReservationData(saved.getId()));
@@ -82,29 +104,40 @@ public class ReservationService {
         LocalTime closeStart = space.getCloseStart();
         LocalTime closeEnd = space.getCloseEnd();
 
-        if (closeStart != null && closeEnd != null) {
-            if (closeStart.equals(closeEnd)) {
-                return;
-            }
+        // Fast Path: Any event 24 hours or longer guarantees an overlap
+        if (Duration.between(start, end).compareTo(Duration.ofHours(24)) >= 0) {
+            throw new IllegalStateException("Space is closed during the requested time window");
+        }
 
-            LocalTime reservationStartTime = start.toLocalTime();
-            LocalTime reservationEndTime = end.toLocalTime();
+        if (closeStart == null || closeEnd == null) {
+            throw new IllegalStateException("Either one of `opens_at` or `closes_at` is not defined.");
+        }
 
-            boolean isOpen24 = closeStart.equals(LocalTime.MIDNIGHT) && closeEnd.equals(LocalTime.MIDNIGHT);
-            if (isOpen24) {
-                return;
-            }
+        if (closeStart.equals(closeEnd)) {
+            return;
+        }
+
+        ZoneId zone = start.getZone();
+        LocalDate startDate = start.toLocalDate();
+
+        // Evaluate absolute closing intervals for Yesterday, Today, and Tomorrow.
+        // We check yesterday in case an overnight closing window bleeds into today's start time.
+        for (int i = -1; i <= 1; i++) {
+            LocalDate evalDate = startDate.plusDays(i);
+            ZonedDateTime cStart = ZonedDateTime.of(evalDate, closeStart, zone);
+            ZonedDateTime cEnd;
 
             if (closeStart.isBefore(closeEnd)) {
-                if (reservationStartTime.isBefore(closeEnd) && reservationEndTime.isAfter(closeStart)) {
-                    throw new IllegalStateException("Space is closed during the requested time window");
-                }
+                // Standard closing hours (e.g., Closed 09:00 to 17:00 same day)
+                cEnd = ZonedDateTime.of(evalDate, closeEnd, zone);
             } else {
-                boolean overlapsClosingPeriod = !reservationStartTime.isBefore(closeStart) || !reservationEndTime.isBefore(closeStart);
-                boolean overlapsOpeningPeriod = !reservationStartTime.isBefore(closeEnd) && !reservationEndTime.isAfter(LocalTime.MIDNIGHT);
-                if (reservationEndTime.isAfter(closeStart) || reservationStartTime.isBefore(closeEnd)) {
-                    throw new IllegalStateException("Space is closed during the requested time window");
-                }
+                // Overnight closing hours (e.g., Closed 22:00 to 06:00 the next day)
+                cEnd = ZonedDateTime.of(evalDate.plusDays(1), closeEnd, zone);
+            }
+
+            // Interval overlap formula: StartA < EndB && StartB < EndA
+            if (start.isBefore(cEnd) && cStart.isBefore(end)) {
+                throw new IllegalStateException("Space is closed during the requested time window");
             }
         }
     }
