@@ -205,6 +205,16 @@ ALTER TABLE "reservations" ADD FOREIGN KEY ("renter_profile_id") REFERENCES "use
 
 ALTER TABLE "reservations" ADD FOREIGN KEY ("cancelled_by") REFERENCES "users_profiles" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE reservations
+    ADD CONSTRAINT no_overlapping_reservations
+        EXCLUDE USING gist (
+        subspace_id WITH =,
+        tstzrange(starts_at, ends_at) WITH &&
+        )
+        WHERE (status != 'cancelled');
+
 ALTER TABLE "holiday_rule" ADD FOREIGN KEY ("space_id") REFERENCES "spaces" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "holiday_override" ADD FOREIGN KEY ("space_id") REFERENCES "spaces" ("id") DEFERRABLE INITIALLY IMMEDIATE;

@@ -11,10 +11,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.WebApplicationContext;
 import rent_a_space_api_clone.dto.CreateReservationRequest;
 import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.HolidayFrequencyType;
@@ -23,8 +27,14 @@ import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,6 +48,9 @@ public class ReservationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private WebApplicationContext context;
 
     @Autowired
     private JsonMapper jsonMapper;
@@ -471,4 +484,171 @@ public class ReservationControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").exists());
     }
+
+    @Test
+    void createReservation_ConcurrentRequests_OnlyOneSucceeds() throws Exception {
+        // Pre-condition: the subspace is open 24/7 so we don't hit other validations.
+        Space fetchedTestSpace = spaceRepository.findById(testSpace.getId()).orElseThrow();
+        fetchedTestSpace.setCloseStart(LocalTime.of(0, 0));
+        fetchedTestSpace.setCloseEnd(LocalTime.of(0, 0));
+        spaceRepository.save(fetchedTestSpace);
+
+        int threadCount = 5;
+        ExecutorService delegate = Executors.newFixedThreadPool(threadCount);
+        ExecutorService executor = new DelegatingSecurityContextExecutorService(delegate);
+        CountDownLatch startLatch = new CountDownLatch(1);   // gates all threads
+        CountDownLatch doneLatch  = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicReference<AssertionError> failure = new AtomicReference<>();
+
+        for (int i = 0; i < threadCount; i++) {
+            final int idx = i;
+            executor.submit(() -> {
+                try {
+                    MockMvc mockMvc = MockMvcBuilders
+                            .webAppContextSetup(context)
+                            .apply(SecurityMockMvcConfigurers.springSecurity())
+                            .build();
+                    // Wait for all threads to be ready before firing simultaneously.
+                    startLatch.await();
+
+                    CreateReservationRequest request = new CreateReservationRequest(
+                            testSubspace.getId(),
+                            // 11:00–13:00 overlaps with the existing 10:00–12:00 slot.
+                            LocalDateTime.of(2026, 3, 15, 13, 0),
+                            LocalDateTime.of(2026, 3, 15, 15, 0),
+                            "Renter-" + idx,
+                            "0100000000" + idx,
+                            "renter" + idx + "@example.com",
+                            null
+                    );
+
+                    mockMvc.perform(post("/v0/reservation")
+                                    .with(user("renter@example.com").roles("RENTER"))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(jsonMapper.writeValueAsString(request)))
+                            .andDo(result -> {
+                                int status = result.getResponse().getStatus();
+                                if (status == 201) {
+                                    successCount.incrementAndGet();
+                                } else if (status == 409) {
+                                    // Expected — the overlapping slot was already taken.
+                                } else {
+                                    // Anything else (5xx, 4xx unexpected) is a real problem.
+                                    failure.set(new AssertionError(
+                                            "Unexpected HTTP " + status + " for thread " + idx));
+                                }
+                            });
+                } catch (AssertionError e) {
+                    failure.set(e);
+                } catch (Exception e) {
+                    failure.set(new AssertionError("Thread " + idx + " threw: " + e.getMessage(), e));
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        // Release all threads at once so they race as tightly as possible.
+        startLatch.countDown();
+        doneLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+        executor.shutdown();
+
+        // Propagate any unexpected assertion failures.
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+
+        // Exactly one concurrent request should have managed to book the overlapping window.
+        // All others must be rejected with 409.
+        assertThat(successCount.get())
+                .as("Exactly one request should succeed; the rest should be rejected as overlapping")
+                .isEqualTo(1);
+
+        // Verify the DB reflects exactly one conflicting reservation (the pre-seeded one).
+        assertThat(reservationRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void createReservation_ConcurrentNonOverlapping_BothSucceed() throws Exception {
+        Space fetchedTestSpace = spaceRepository.findById(testSpace.getId()).orElseThrow();
+        fetchedTestSpace.setCloseStart(LocalTime.of(0, 0));
+        fetchedTestSpace.setCloseEnd(LocalTime.of(0, 0));
+        spaceRepository.save(fetchedTestSpace);
+
+        int threadCount = 2;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch  = new CountDownLatch(threadCount);
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicReference<AssertionError> failure = new AtomicReference<>();
+
+        // Thread 0 → 10:00–12:00
+        // Thread 1 → 12:00–14:00  (adjacent, no overlap)
+        String[][] slots = {
+                {"2026-03-16T10:00", "2026-03-16T12:00"},
+                {"2026-03-16T12:00", "2026-03-16T14:00"}
+        };
+
+        for (int i = 0; i < threadCount; i++) {
+            final int idx = i;
+            executor.submit(() -> {
+                try {
+                    MockMvc mockMvc = MockMvcBuilders
+                            .webAppContextSetup(context)
+                            .apply(SecurityMockMvcConfigurers.springSecurity())
+                            .build();
+
+                    startLatch.await();
+
+                    CreateReservationRequest request = new CreateReservationRequest(
+                            testSubspace.getId(),
+                            LocalDateTime.parse(slots[idx][0]),
+                            LocalDateTime.parse(slots[idx][1]),
+                            "Renter-" + idx,
+                            "0100000000" + idx,
+                            "renter" + idx + "@example.com",
+                            null
+                    );
+
+                    mockMvc.perform(post("/v0/reservation")
+                                    .with(user("renter@example.com").roles("RENTER"))
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(jsonMapper.writeValueAsString(request)))
+                            .andDo(result -> {
+                                if (result.getResponse().getStatus() == 201) {
+                                    successCount.incrementAndGet();
+                                } else {
+                                    failure.set(new AssertionError(
+                                            "Unexpected HTTP " + result.getResponse().getStatus()
+                                                    + " for thread " + idx));
+                                }
+                            });
+                } catch (AssertionError e) {
+                    failure.set(e);
+                } catch (Exception e) {
+                    failure.set(new AssertionError("Thread " + idx + " threw: " + e.getMessage(), e));
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        doneLatch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+        executor.shutdown();
+
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+
+        assertThat(successCount.get())
+                .as("Both non-overlapping requests should succeed in parallel")
+                .isEqualTo(2);
+
+        assertThat(reservationRepository.findAll()).hasSize(2);
+    }
+
 }

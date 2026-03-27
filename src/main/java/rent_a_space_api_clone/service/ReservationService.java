@@ -35,7 +35,7 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
-        Subspace subspace = subspaceRepository.findById(request.subspaceId())
+        Subspace subspace = subspaceRepository.findByIdForUpdate(request.subspaceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Subspace not found with id: " + request.subspaceId()));
 
         // Check soft-delete
