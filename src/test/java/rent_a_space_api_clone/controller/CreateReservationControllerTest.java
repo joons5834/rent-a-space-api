@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
-public class ReservationControllerTest {
+public class CreateReservationControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
