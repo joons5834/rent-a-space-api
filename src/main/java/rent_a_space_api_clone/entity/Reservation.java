@@ -57,7 +57,10 @@ public class Reservation {
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
 
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cancelled_by", insertable = false, updatable = false)
+    @JoinColumn(name = "cancelled_by")
     private UserProfile cancelledByProfile;
 }

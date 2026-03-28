@@ -17,4 +17,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("subspaceId") Long subspaceId,
             @Param("start") ZonedDateTime start,
             @Param("end") ZonedDateTime end);
+
+    @Query("SELECT h.id FROM Reservation r left join r.subspace ss " +
+            "left join ss.space s " +
+            "left join s.hostProfile h")
+    Long findHostProfileIdById(@Param("id") Long reservationId);
 }

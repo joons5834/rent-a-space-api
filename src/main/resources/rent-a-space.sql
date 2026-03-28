@@ -64,7 +64,8 @@ CREATE TABLE "reservations" (
   "created_at" timestamp with time zone NOT NULL,
   "status_updated_at" timestamp with time zone,
   "cancelled_at" timestamp with time zone,
-  "cancelled_by" integer
+  "cancelled_by" integer,
+  "cancellation_reason" varchar
 );
 
 CREATE TABLE "holiday_rule" (

@@ -96,4 +96,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", exception.getMessage()));
     }
+
+    @ExceptionHandler(PermissionDeniedException.class)
+    public ResponseEntity<Map<String, String>> handlePermissionDeniedException(PermissionDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }

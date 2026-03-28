@@ -1,10 +1,12 @@
 package rent_a_space_api_clone.service;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import rent_a_space_api_clone.dto.CancelReservationRequest;
 import rent_a_space_api_clone.dto.CreateReservationRequest;
 import rent_a_space_api_clone.dto.ReservationResponse;
 import rent_a_space_api_clone.entity.Reservation;
@@ -12,6 +14,7 @@ import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.Subspace;
 import rent_a_space_api_clone.entity.UserProfile;
 import rent_a_space_api_clone.enums.Role;
+import rent_a_space_api_clone.exception.PermissionDeniedException;
 import rent_a_space_api_clone.exception.ResourceNotFoundException;
 import rent_a_space_api_clone.repository.ReservationRepository;
 import rent_a_space_api_clone.repository.SpaceRepository;
@@ -20,6 +23,9 @@ import rent_a_space_api_clone.repository.UserProfileRepository;
 
 import java.time.*;
 import java.util.List;
+
+import static rent_a_space_api_clone.enums.Role.HOST;
+import static rent_a_space_api_clone.enums.Role.RENTER;
 
 @Service
 @RequiredArgsConstructor
@@ -69,7 +75,7 @@ public class ReservationService {
         validateNotHoliday(space, startInSpaceTz, endInSpaceTz);
         validateDuration(subspace, startInSpaceTz, endInSpaceTz);
 
-        UserProfile renterProfile = getRenterProfile();
+        UserProfile renterProfile = getEnabledUserProfile(RENTER);
 
         // Check renter is enabled
         if (Boolean.FALSE.equals(renterProfile.getEnabled())) {
@@ -171,13 +177,61 @@ public class ReservationService {
         }
     }
 
-    private UserProfile getRenterProfile() {
+    private UserProfile getEnabledUserProfile(Role role) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
 
         return userProfileRepository
-                .findByUserEmailAndRole(email, Role.RENTER)
+                .findByUserEmailAndRole(email, role)
+                .filter(UserProfile::getEnabled)
                 .orElseThrow(
-                        () -> new IllegalStateException("User profile not found"));
+                        () -> new PermissionDeniedException("Enabled user profile not found"));
     }
+
+    @Transactional
+    public void cancelReservation(Long id, @Valid CancelReservationRequest request) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        Reservation reservation = reservationRepository.findById(id).orElseThrow();
+
+        if ("cancelled".equals(reservation.getStatus())) {
+            throw new IllegalStateException("Reservation already cancelled");
+        }
+
+        if (now.toZonedDateTime().isAfter(reservation.getStartsAt())) {
+            throw new IllegalStateException("Only able to cancel future reservations.");
+        }
+
+        Role role = request.getRole();
+        UserProfile cancellingUser = getEnabledUserProfile(role);
+        if (HOST.equals(role)) {
+            if (!hostOwnsTheSpace(reservation, cancellingUser)){
+                throw new PermissionDeniedException("The host doesn't own the space");
+            }
+        } else if (RENTER.equals(role)) {
+            if (!renterMadeTheReservation(reservation, cancellingUser)) {
+                throw new PermissionDeniedException("The renter doesn't own the reservation");
+            }
+        }
+
+        reservation.setStatus("cancelled");
+        reservation.setCancellationReason(request.getCancellationReason());
+        reservation.setCancelledAt(now);
+        reservation.setCancelledByProfile(cancellingUser);
+    }
+
+    private boolean renterMadeTheReservation(Reservation reservation, UserProfile userProfile) {
+        Long renterProfileId = reservation.getRenterProfile().getId();
+        Long userProfileId = userProfile.getId();
+        return renterProfileId.equals(userProfileId);
+    }
+
+    private boolean hostOwnsTheSpace(Reservation reservation, UserProfile userProfile) {
+        Long reservationId = reservation.getId();
+        Long userProfileId = userProfile.getId();
+        Long hostProfileId = reservationRepository.findHostProfileIdById(reservationId);
+
+        return userProfileId.equals(hostProfileId);
+    }
+
 }
