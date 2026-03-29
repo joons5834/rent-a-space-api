@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import rent_a_space_api_clone.enums.ReservationStatus;
 
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -34,7 +35,8 @@ public class Reservation {
     @Column(name = "ends_at")
     private ZonedDateTime endsAt;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private ReservationStatus status;
 
     @Column(name = "renter_name")
     private String renterName;

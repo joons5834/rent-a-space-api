@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static rent_a_space_api_clone.enums.ReservationStatus.CONFIRMED;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -192,7 +193,7 @@ public class CreateReservationControllerTest {
         assertThat(saved.getRenterPhone()).isEqualTo("01012345678");
         assertThat(saved.getRenterEmail()).isEqualTo("example@example.com");
         assertThat(saved.getCustomRequest()).isEqualTo("I need 2 chairs.");
-        assertThat(saved.getStatus()).isEqualTo("confirmed");
+        assertThat(saved.getStatus()).isEqualTo(CONFIRMED);
         assertThat(saved.getSubspace().getId()).isEqualTo(testSubspace.getId());
     }
 
@@ -262,7 +263,7 @@ public class CreateReservationControllerTest {
         existing.setTimezone("Asia/Seoul");
         existing.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 10, 0), testSubspace.getSpace().getTimezone()));
         existing.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 12, 0), testSubspace.getSpace().getTimezone()));
-        existing.setStatus("confirmed");
+        existing.setStatus(CONFIRMED);
         existing.setRenterName("Existing");
         existing.setRenterPhone("01000000000");
         existing.setRenterEmail("existing@example.com");
@@ -461,7 +462,7 @@ public class CreateReservationControllerTest {
         existing.setTimezone("Asia/Seoul");
         existing.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 10, 0), testSubspace.getSpace().getTimezone()));
         existing.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 12, 0), testSubspace.getSpace().getTimezone()));
-        existing.setStatus("confirmed");
+        existing.setStatus(CONFIRMED);
         existing.setRenterName("Existing");
         existing.setRenterPhone("01000000000");
         existing.setRenterEmail("existing@example.com");

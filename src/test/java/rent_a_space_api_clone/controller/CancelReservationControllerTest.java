@@ -28,6 +28,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static rent_a_space_api_clone.enums.ReservationStatus.CANCELLED;
+import static rent_a_space_api_clone.enums.ReservationStatus.CONFIRMED;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -167,7 +169,7 @@ public class CancelReservationControllerTest {
                 ZoneId.of("Asia/Seoul")));
         reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 6, 12, 0, 0),
                 ZoneId.of("Asia/Seoul")));
-        reservation.setStatus("confirmed");
+        reservation.setStatus(CONFIRMED);
         reservation.setCreatedAt(OffsetDateTime.now());
         reservationId = reservationRepository.save(reservation).getId();
     }
@@ -204,7 +206,7 @@ public class CancelReservationControllerTest {
                 .andExpect(jsonPath("$.error").value("Reservation already cancelled"));
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNotNull();
         assertThat(reservation.getCancellationReason()).isEqualTo("Change of schedule");
         assertThat(reservation.getCancelledByProfile().getId())
@@ -231,7 +233,7 @@ public class CancelReservationControllerTest {
                 .andExpect(jsonPath("$.error").value("Reservation already cancelled"));
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNotNull();
         assertThat(reservation.getCancellationReason()).isEqualTo("Change of schedule");
         assertThat(reservation.getCancelledByProfile().getId())
@@ -258,7 +260,7 @@ public class CancelReservationControllerTest {
                 .andExpect(jsonPath("$.error").value("Reservation already cancelled"));
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNotNull();
         assertThat(reservation.getCancellationReason()).isEqualTo("Change of schedule");
         assertThat(reservation.getCancelledByProfile().getId())
@@ -292,7 +294,7 @@ public class CancelReservationControllerTest {
                 .andExpect(status().isForbidden());
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isNotEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isNotEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNull();
         assertThat(reservation.getCancellationReason()).isNull();
         assertThat(reservation.getCancelledByProfile()).isNull();
@@ -325,7 +327,7 @@ public class CancelReservationControllerTest {
                 .andExpect(status().isForbidden());
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isNotEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isNotEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNull();
         assertThat(reservation.getCancellationReason()).isNull();
         assertThat(reservation.getCancelledByProfile()).isNull();
@@ -345,7 +347,7 @@ public class CancelReservationControllerTest {
                 .andExpect(status().isForbidden());
 
         Reservation reservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(reservation.getStatus()).isNotEqualTo("cancelled");
+        assertThat(reservation.getStatus()).isNotEqualTo(CANCELLED);
         assertThat(reservation.getCancelledAt()).isNull();
         assertThat(reservation.getCancellationReason()).isNull();
         assertThat(reservation.getCancelledByProfile()).isNull();
@@ -363,7 +365,7 @@ public class CancelReservationControllerTest {
                 ZoneId.of("Asia/Seoul")));
         reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 2, 28, 12, 0, 0),
                 ZoneId.of("Asia/Seoul")));
-        reservation.setStatus("confirmed");
+        reservation.setStatus(CONFIRMED);
         reservation.setCreatedAt(OffsetDateTime.now());
         Long reservationId = reservationRepository.save(reservation).getId();
 
@@ -379,7 +381,7 @@ public class CancelReservationControllerTest {
                 .andExpect(jsonPath("$.error").value("Only able to cancel future reservations."));
 
         Reservation fetchedReservation = reservationRepository.findById(reservationId).orElseThrow();
-        assertThat(fetchedReservation.getStatus()).isNotEqualTo("cancelled");
+        assertThat(fetchedReservation.getStatus()).isNotEqualTo(CANCELLED);
         assertThat(fetchedReservation.getCancelledAt()).isNull();
         assertThat(fetchedReservation.getCancellationReason()).isNull();
         assertThat(fetchedReservation.getCancelledByProfile()).isNull();

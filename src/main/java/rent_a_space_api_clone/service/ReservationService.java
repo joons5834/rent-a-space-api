@@ -13,6 +13,7 @@ import rent_a_space_api_clone.entity.Reservation;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.Subspace;
 import rent_a_space_api_clone.entity.UserProfile;
+import rent_a_space_api_clone.enums.ReservationStatus;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.exception.PermissionDeniedException;
 import rent_a_space_api_clone.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import rent_a_space_api_clone.repository.UserProfileRepository;
 import java.time.*;
 import java.util.List;
 
+import static rent_a_space_api_clone.enums.ReservationStatus.CANCELLED;
 import static rent_a_space_api_clone.enums.Role.HOST;
 import static rent_a_space_api_clone.enums.Role.RENTER;
 
@@ -88,7 +90,7 @@ public class ReservationService {
         reservation.setTimezone(spaceTimezone.getId());
         reservation.setStartsAt(startInSpaceTz);
         reservation.setEndsAt(endInSpaceTz);
-        reservation.setStatus("confirmed");
+        reservation.setStatus(ReservationStatus.CONFIRMED);
         reservation.setRenterName(request.renterName());
         reservation.setRenterPhone(request.renterPhone());
         reservation.setRenterEmail(request.renterEmail());
@@ -194,7 +196,7 @@ public class ReservationService {
 
         Reservation reservation = reservationRepository.findById(id).orElseThrow();
 
-        if ("cancelled".equals(reservation.getStatus())) {
+        if (CANCELLED.equals(reservation.getStatus())) {
             throw new IllegalStateException("Reservation already cancelled");
         }
 
@@ -214,7 +216,7 @@ public class ReservationService {
             }
         }
 
-        reservation.setStatus("cancelled");
+        reservation.setStatus(CANCELLED);
         reservation.setCancellationReason(request.getCancellationReason());
         reservation.setCancelledAt(now);
         reservation.setCancelledByProfile(cancellingUser);
