@@ -226,7 +226,7 @@ public class CancelReservationControllerTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
-                        .with(user("renter@example.com").roles("HOST"))
+                        .with(user("host@example.com").roles("HOST"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -253,7 +253,7 @@ public class CancelReservationControllerTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
-                        .with(user("renter@example.com").roles("ADMIN"))
+                        .with(user("admin@example.com").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
