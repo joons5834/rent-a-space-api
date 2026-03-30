@@ -6,8 +6,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import rent_a_space_api_clone.dto.CancelReservationRequest;
 import rent_a_space_api_clone.dto.CreateReservationRequest;
+import rent_a_space_api_clone.dto.HostReservationResponse;
 import rent_a_space_api_clone.dto.ReservationResponse;
 import rent_a_space_api_clone.entity.Reservation;
 import rent_a_space_api_clone.entity.Space;
@@ -40,6 +43,62 @@ public class ReservationService {
     private final HolidayGeneratorService holidayGeneratorService;
 
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public HostReservationResponse getHostReservations(
+            String orderBy,
+            ReservationStatus status,
+            String cursor,
+            int limit) {
+
+        UserProfile hostProfile = getEnabledUserProfile(HOST);
+
+        List<Reservation> reservations;
+        Pageable pageable = PageRequest.of(0, limit);
+
+        if ("starts_at".equals(orderBy)) {
+            ZonedDateTime cursorStartsAt = null;
+            Long cursorId = null;
+            if (cursor != null && !cursor.isEmpty()) {
+                String[] parts = cursor.split("\\|");
+                if (parts.length == 2) {
+                    cursorStartsAt = ZonedDateTime.parse(parts[0]);
+                    cursorId = Long.parseLong(parts[1]);
+                }
+            }
+            reservations = reservationRepository.findHostReservationsOrderByStartsAt(
+                    hostProfile.getId(), status, cursorStartsAt, cursorId, pageable);
+        } else {
+            // Default: orderBy=id
+            Long cursorId = (cursor != null && !cursor.isEmpty()) ? Long.parseLong(cursor) : null;
+            reservations = reservationRepository.findHostReservationsOrderById(
+                    hostProfile.getId(), status, cursorId, pageable);
+        }
+
+        String nextCursor = null;
+        if (reservations.size() == limit) {
+            Reservation last = reservations.get(reservations.size() - 1);
+            if ("starts_at".equals(orderBy)) {
+                nextCursor = last.getStartsAt().toOffsetDateTime().toString() + "|" + last.getId();
+            } else {
+                nextCursor = last.getId().toString();
+            }
+        }
+
+        List<HostReservationResponse.ReservationInfo> reservationInfos = reservations.stream()
+                .map(r -> new HostReservationResponse.ReservationInfo(
+                        r.getId(),
+                        r.getStartsAt(),
+                        r.getEndsAt(),
+                        r.getStatus(),
+                        r.getRenterName(),
+                        r.getSubspace().getName(),
+                        r.getSubspace().getSpace().getName()
+                ))
+                .toList();
+
+        return new HostReservationResponse(reservationInfos, nextCursor);
+    }
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request) {
