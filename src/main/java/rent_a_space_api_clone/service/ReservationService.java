@@ -88,8 +88,9 @@ public class ReservationService {
         List<HostReservationResponse.ReservationInfo> reservationInfos = reservations.stream()
                 .map(r -> new HostReservationResponse.ReservationInfo(
                         r.getId(),
-                        r.getStartsAt(),
-                        r.getEndsAt(),
+                        r.getTimezone(),
+                        r.getStartsAt().withZoneSameInstant(r.getTimezone()).toLocalDateTime(),
+                        r.getEndsAt().withZoneSameInstant(r.getTimezone()).toLocalDateTime(),
                         r.getStatus(),
                         r.getRenterName(),
                         r.getSubspace().getName(),
