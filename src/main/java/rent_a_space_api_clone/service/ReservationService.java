@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import rent_a_space_api_clone.dto.CancelReservationRequest;
-import rent_a_space_api_clone.dto.CreateReservationRequest;
-import rent_a_space_api_clone.dto.HostReservationResponse;
-import rent_a_space_api_clone.dto.ReservationResponse;
+import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.entity.Reservation;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.Subspace;
@@ -29,8 +26,7 @@ import java.time.*;
 import java.util.List;
 
 import static rent_a_space_api_clone.enums.ReservationStatus.CANCELLED;
-import static rent_a_space_api_clone.enums.Role.HOST;
-import static rent_a_space_api_clone.enums.Role.RENTER;
+import static rent_a_space_api_clone.enums.Role.*;
 
 @Service
 @RequiredArgsConstructor
@@ -250,6 +246,16 @@ public class ReservationService {
                         () -> new PermissionDeniedException("Enabled user profile not found"));
     }
 
+    private List<Role> getRoles() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getAuthorities()
+                .stream()
+                .map((grantedAuthority) -> grantedAuthority.getAuthority())
+                .filter((authority) -> authority.startsWith("ROLE_"))
+                .map((authority) -> Role.valueOf(authority.substring(5)) )
+                .toList();
+    }
+
     @Transactional
     public void cancelReservation(Long id, @Valid CancelReservationRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
@@ -296,4 +302,41 @@ public class ReservationService {
         return userProfileId.equals(hostProfileId);
     }
 
+    @Transactional
+    public ReservationDetailResponse getReservationDetail(Long id) {
+
+        boolean isAllowed = false;
+
+        List<Role> roles = getRoles();
+
+        Reservation reservation = reservationRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation id " + id + "not found"));
+
+        if (roles.contains(ADMIN)) {
+            getEnabledUserProfile(ADMIN);
+            isAllowed = true;
+        } else if (roles.contains(HOST)
+                && hostOwnsTheSpace(reservation, getEnabledUserProfile(HOST))) {
+            isAllowed = true;
+        } else if (roles.contains(RENTER)
+                && renterMadeTheReservation(reservation, getEnabledUserProfile(RENTER))) {
+            isAllowed = true;
+        }
+
+        if (!isAllowed) {
+            throw new PermissionDeniedException("Not permitted to see reservation detail.");
+        }
+
+
+        ReservationDetailResponse.ReservationDetail reservationDetail = new ReservationDetailResponse.ReservationDetail(
+                reservation.getId(), reservation.getStatus(), reservation.getCreatedAt(),
+                reservation.getSubspace().getSpace().getName(), reservation.getSubspace().getName(),
+                reservation.getTimezone(),
+                reservation.getStartsAt().withZoneSameInstant(reservation.getTimezone()).toLocalDateTime(),
+                reservation.getEndsAt().withZoneSameInstant(reservation.getTimezone()).toLocalDateTime(),
+                reservation.getCustomRequest(), reservation.getRenterName(), reservation.getRenterEmail(),
+                reservation.getRenterPhone());
+        return new ReservationDetailResponse(reservationDetail);
+
+    }
 }

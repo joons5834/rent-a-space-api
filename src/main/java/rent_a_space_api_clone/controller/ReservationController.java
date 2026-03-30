@@ -6,10 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import rent_a_space_api_clone.dto.CancelReservationRequest;
-import rent_a_space_api_clone.dto.CreateReservationRequest;
-import rent_a_space_api_clone.dto.HostReservationResponse;
-import rent_a_space_api_clone.dto.ReservationResponse;
+import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.enums.ReservationStatus;
 import rent_a_space_api_clone.service.ReservationService;
 
@@ -35,6 +32,13 @@ public class ReservationController {
     public ResponseEntity<ReservationResponse> createReservation(@Valid @RequestBody CreateReservationRequest request) {
         ReservationResponse response = reservationService.createReservation(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/v0/reservation/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ReservationDetailResponse> getReservationDetail(@PathVariable Long id) {
+        ReservationDetailResponse response = reservationService.getReservationDetail(id);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @DeleteMapping("/v0/reservation/{id}")
