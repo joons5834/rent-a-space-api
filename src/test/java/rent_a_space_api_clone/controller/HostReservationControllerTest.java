@@ -110,6 +110,7 @@ public class HostReservationControllerTest {
             Reservation r = new Reservation();
             r.setSubspace(testSubspace);
             r.setRenterProfile(renterProfile);
+            r.setTimezone(ZoneId.of("UTC"));
             r.setStartsAt(ZonedDateTime.of(2026, 4, i, 10, 0, 0, 0, ZoneId.of("UTC")));
             r.setEndsAt(ZonedDateTime.of(2026, 4, i, 12, 0, 0, 0, ZoneId.of("UTC")));
             r.setStatus(i % 2 == 0 ? ReservationStatus.CONFIRMED : ReservationStatus.PENDING);

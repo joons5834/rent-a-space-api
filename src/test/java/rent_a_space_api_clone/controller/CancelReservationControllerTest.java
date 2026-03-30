@@ -164,7 +164,7 @@ public class CancelReservationControllerTest {
         Reservation reservation = new Reservation();
         reservation.setSubspace(testSubspace);
         reservation.setRenterProfile(renterProfile);
-        reservation.setTimezone("Asia/Seoul");
+        reservation.setTimezone(ZoneId.of("Asia/Seoul"));
         reservation.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 6, 10, 0, 0),
                 ZoneId.of("Asia/Seoul")));
         reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 6, 12, 0, 0),
@@ -360,7 +360,7 @@ public class CancelReservationControllerTest {
         Reservation reservation = new Reservation();
         reservation.setSubspace(testSubspace);
         reservation.setRenterProfile(renterProfile);
-        reservation.setTimezone("Asia/Seoul");
+        reservation.setTimezone(ZoneId.of("Asia/Seoul"));
         reservation.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 2, 28, 10, 0, 0),
                 ZoneId.of("Asia/Seoul")));
         reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 2, 28, 12, 0, 0),

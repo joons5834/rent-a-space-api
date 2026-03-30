@@ -260,7 +260,7 @@ public class CreateReservationControllerTest {
         Reservation existing = new Reservation();
         existing.setSubspace(testSubspace);
         existing.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
-        existing.setTimezone("Asia/Seoul");
+        existing.setTimezone(ZoneId.of("Asia/Seoul"));
         existing.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 10, 0), testSubspace.getSpace().getTimezone()));
         existing.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 12, 0), testSubspace.getSpace().getTimezone()));
         existing.setStatus(CONFIRMED);
@@ -459,7 +459,7 @@ public class CreateReservationControllerTest {
         Reservation existing = new Reservation();
         existing.setSubspace(testSubspace);
         existing.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
-        existing.setTimezone("Asia/Seoul");
+        existing.setTimezone(ZoneId.of("Asia/Seoul"));
         existing.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 10, 0), testSubspace.getSpace().getTimezone()));
         existing.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 12, 0), testSubspace.getSpace().getTimezone()));
         existing.setStatus(CONFIRMED);

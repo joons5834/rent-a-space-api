@@ -7,6 +7,7 @@ import lombok.ToString;
 import rent_a_space_api_clone.enums.ReservationStatus;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 @Entity
@@ -27,7 +28,7 @@ public class Reservation {
     @JoinColumn(name = "renter_profile_id")
     private UserProfile renterProfile;
 
-    private String timezone;
+    private ZoneId timezone;
 
     @Column(name = "starts_at")
     private ZonedDateTime startsAt;

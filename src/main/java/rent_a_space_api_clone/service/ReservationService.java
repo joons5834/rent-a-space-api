@@ -146,7 +146,7 @@ public class ReservationService {
         Reservation reservation = new Reservation();
         reservation.setSubspace(subspace);
         reservation.setRenterProfile(renterProfile);
-        reservation.setTimezone(spaceTimezone.getId());
+        reservation.setTimezone(spaceTimezone);
         reservation.setStartsAt(startInSpaceTz);
         reservation.setEndsAt(endInSpaceTz);
         reservation.setStatus(ReservationStatus.CONFIRMED);
