@@ -56,9 +56,7 @@ class AuthenticationFlowIntegrationTest {
         signupRequest.setPassword("flowtest123456");
         signupRequest.setRole(Role.RENTER);
 
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setBio("flowTestBio");
-        roleProfile.setNickname("flowTestNick");
+        RoleProfileRequest roleProfile = new RoleProfileRequest("flowTestNick", "flowTestBio");
         signupRequest.setRoleProfile(roleProfile);
 
         return signupRequest;

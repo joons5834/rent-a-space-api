@@ -83,11 +83,11 @@ public class UserController {
         Authentication currentAuth = securityContextHolderStrategy.getContext().getAuthentication();
         if (currentAuth != null
                 && currentAuth.getName().equals(userResponse.getEmail())
-                && !request.getRole().equals(Role.ADMIN)) {
+                && !request.role().equals(Role.ADMIN)) {
             // Copy existing authorities and add the new role
             Collection<GrantedAuthority> updatedAuthorities = new ArrayList<>(currentAuth.getAuthorities());
             System.out.println("[DEBUG]: authorities before: " +updatedAuthorities);
-            updatedAuthorities.add(new SimpleGrantedAuthority("ROLE_"+ request.getRole().name()));
+            updatedAuthorities.add(new SimpleGrantedAuthority("ROLE_"+ request.role().name()));
             System.out.println("[DEBUG]: authorities after: " +updatedAuthorities);
 
 
