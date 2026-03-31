@@ -48,42 +48,42 @@ public class SpaceService {
                 .orElseThrow(() -> new IllegalStateException("Host profile not found"));
 
         // Find category
-        Category category = categoryRepository.findByName(request.getCategory())
+        Category category = categoryRepository.findByName(request.category())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid category"));
 
         // Create space
         Space space = new Space();
-        space.setName(request.getName());
-        space.setDescription(request.getDescription());
+        space.setName(request.name());
+        space.setDescription(request.description());
         space.setHostProfile(hostProfile);
         space.setCategory(category);
-        space.setPhone1(request.getPhone1());
-        space.setPhone2(request.getPhone2());
-        space.setEmail(request.getEmail());
-        space.setIsClosedAtPublicHolidays(request.getIsClosedOnPublicHolidays());
-        space.setIsVisible(request.getIsVisible() != null ? request.getIsVisible() : false);
+        space.setPhone1(request.phone1());
+        space.setPhone2(request.phone2());
+        space.setEmail(request.email());
+        space.setIsClosedAtPublicHolidays(request.isClosedOnPublicHolidays());
+        space.setIsVisible(request.isVisible() != null ? request.isVisible() : false);
 
-        ZoneId timezone = request.getTimezone();
+        ZoneId timezone = request.timezone();
         space.setTimezone(timezone);
 
         // Handle times
-        configureOpeningTimes(space, request.getIsOpen24(), request.getOpensAt(), request.getClosesAt());
+        configureOpeningTimes(space, request.isOpen24(), request.opensAt(), request.closesAt());
 
         // Save space first to get id
         Space savedSpace = spaceRepository.save(space);
 
         // Handle images
-        createAndSaveSpacesImages(savedSpace, request.getMainImageUrl(), request.getImagesUrls());
+        createAndSaveSpacesImages(savedSpace, request.mainImageUrl(), request.imagesUrls());
 
         // Handle holiday rules
-        if (request.getClosesOnEvery() != null) {
-            HolidayRule rule = configureHolidayRule(savedSpace, request.getClosesOnEvery().getType(), request.getClosesOnEvery().getDays());
+        if (request.closesOnEvery() != null) {
+            HolidayRule rule = configureHolidayRule(savedSpace, request.closesOnEvery().type(), request.closesOnEvery().days());
             holidayRuleRepository.save(rule);
         }
 
         // Handle holiday overrides
-        if (request.getClosesOn() != null) {
-            processHolidayOverrides(savedSpace, request.getClosesOn());
+        if (request.closesOn() != null) {
+            processHolidayOverrides(savedSpace, request.closesOn());
         }
         entityManager.flush();
         entityManager.clear();
@@ -260,12 +260,12 @@ public class SpaceService {
         for (CreateSpaceRequest.ClosesOn closesOnItem : closesOn) {
             HolidayOverride override = new HolidayOverride();
             override.setSpace(space);
-            override.setName(closesOnItem.getName());
-            override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
-            override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+            override.setName(closesOnItem.name());
+            override.setStartsAt(LocalDate.parse(closesOnItem.startDate()));
+            override.setEndsAt(LocalDate.parse(closesOnItem.lastDate()));
             override.setIsClosed(true);
-            if (closesOnItem.getDays() != null) {
-                override.setDayMask(calculateDayMask(closesOnItem.getDays()));
+            if (closesOnItem.days() != null) {
+                override.setDayMask(calculateDayMask(closesOnItem.days()));
             }
             override.setPriorityWeight(0); // default
             overrides.add(override);

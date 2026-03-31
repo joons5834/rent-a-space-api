@@ -127,20 +127,15 @@ public class SpaceControllerTest {
 
     @Test
     void createSpace_Success() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
-        request.setCategory("meeting");
-        request.setName("Test Space");
-        request.setDescription("A test space");
-        request.setIsOpen24(false);
-        request.setOpensAt("09:00:00");
-        request.setClosesAt("18:00:00");
-        request.setMainImageUrl("https://example.com/image1.png");
-        request.setImagesUrls(List.of("https://example.com/image2.png"));
-        request.setPhone1("1234567890");
-        request.setEmail("space@example.com");
-        request.setIsClosedOnPublicHolidays(false);
-        request.setIsVisible(true);
-        request.setTimezone(ZoneId.of("Asia/Seoul"));
+        CreateSpaceRequest request = new CreateSpaceRequest(
+                "meeting", "Test Space", "A test space",
+                false, "09:00:00", "18:00:00",
+                "https://example.com/image1.png",
+                List.of("https://example.com/image2.png"),
+                "1234567890", null, "space@example.com",
+                false, null, null,true,
+                ZoneId.of("Asia/Seoul")
+        );
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,56 +152,63 @@ public class SpaceControllerTest {
 
     @Test
     void createSpace_InvalidRequest() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
+        String jsonRequest = "{}";
         // Missing required fields: name, category
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(jsonRequest))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void createSpace_InvalidCategory() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
-        request.setCategory("invalid");
-        request.setName("Test Space");
-        request.setTimezone(ZoneId.of("Asia/Seoul"));
+        String jsonRequest = """
+                {
+                    "category": "invalid",
+                    "name": "Test Space",
+                    "timezone": "Asia/Seoul"
+                }
+                """;
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(jsonRequest))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void createSpace_ImageNotFound() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
-        request.setCategory("meeting");
-        request.setName("Test Space");
-        request.setMainImageUrl("https://nonexistent.com/image.png");
-        request.setTimezone(ZoneId.of("Asia/Seoul"));
+        String jsonRequest = """
+                {
+                    "category": "meeting",
+                    "name": "Test Space",
+                    "main_image_url": "https://nonexistent.com/image.png",
+                    "timezone": "Asia/Seoul"
+                }
+                """;
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(jsonRequest))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @Transactional
     void createSpace_WithHolidayRules() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
-        request.setCategory("meeting");
-        request.setName("Holiday Space");
-        request.setClosesOnEvery(new CreateSpaceRequest.ClosesOnEvery());
-        request.getClosesOnEvery().setType("every_week");
-        request.getClosesOnEvery().setDays(List.of("Mon", "Fri"));
-        request.setTimezone(ZoneId.of("Asia/Seoul"));
+        String jsonRequest = """
+                {
+                    "category": "meeting",
+                    "name": "Holiday Space",
+                    "closes_on_every" : {"type": "every_week", "days": ["Mon", "Fri"]},
+                    "timezone": "Asia/Seoul"
+                }
+                """;
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(jsonRequest))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.closes_on_every.type").value("every_week"))
                 .andExpect(jsonPath("$.data.closes_on_every.days", containsInAnyOrder("Mon", "Fri")))
@@ -218,16 +220,19 @@ public class SpaceControllerTest {
 
     @Test
     void createSpace_24Hours() throws Exception {
-        CreateSpaceRequest request = new CreateSpaceRequest();
-        request.setCategory("practice");
-        request.setName("24 Hour Space");
-        request.setIsOpen24(true);
-        request.setIsVisible(true);
-        request.setTimezone(ZoneId.of("Asia/Seoul"));
+        String jsonRequest = """
+                {
+                    "category": "practice",
+                    "name": "24 Hour Space",
+                    "is_open_24": true,
+                    "is_visible": true,
+                    "timezone": "Asia/Seoul"
+                }
+                """;
 
         mockMvc.perform(post("/v0/spaces")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(request)))
+                        .content(jsonRequest))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("24 Hour Space"))
                 .andExpect(jsonPath("$.data.is_open_24").value(true))
