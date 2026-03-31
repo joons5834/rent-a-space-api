@@ -188,9 +188,8 @@ public class CancelReservationControllerTest {
 
     @Test
     void cancelReservationByRenter_Success() throws Exception {
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.RENTER);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.RENTER, "Change of schedule");
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("renter@example.com").roles("RENTER"))
@@ -215,9 +214,9 @@ public class CancelReservationControllerTest {
 
     @Test
     void cancelReservationByHost_Success() throws Exception {
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.HOST);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.HOST, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("host@example.com").roles("HOST"))
@@ -242,9 +241,9 @@ public class CancelReservationControllerTest {
 
     @Test
     void cancelReservationByAdmin_Success() throws Exception {
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.ADMIN);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.ADMIN, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("admin@example.com").roles("ADMIN"))
@@ -283,9 +282,9 @@ public class CancelReservationControllerTest {
         profile.setNickname("TestRenter2");
         userProfileRepository.save(profile);
 
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.RENTER);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.RENTER, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("renter2@example.com").roles("RENTER"))
@@ -316,9 +315,9 @@ public class CancelReservationControllerTest {
         profile.setNickname("TestHost2");
         userProfileRepository.save(profile);
 
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.HOST);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.HOST, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("host2@example.com").roles("HOST"))
@@ -336,9 +335,9 @@ public class CancelReservationControllerTest {
     @Test
     @DisplayName("Cannot cancel the reservation in admin mode without admin role.")
     void cancelReservation_AdminForbidden() throws Exception {
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.ADMIN);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.ADMIN, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("renter@example.com").roles("RENTER"))
@@ -369,9 +368,9 @@ public class CancelReservationControllerTest {
         reservation.setCreatedAt(OffsetDateTime.now());
         Long reservationId = reservationRepository.save(reservation).getId();
 
-        CancelReservationRequest request = new CancelReservationRequest();
-        request.setRole(Role.RENTER);
-        request.setCancellationReason("Change of schedule");
+        CancelReservationRequest request = new CancelReservationRequest(
+                Role.RENTER, "Change of schedule"
+        );
 
         mockMvc.perform(delete("/v0/reservation/{id}", reservationId)
                         .with(user("renter@example.com").roles("RENTER"))

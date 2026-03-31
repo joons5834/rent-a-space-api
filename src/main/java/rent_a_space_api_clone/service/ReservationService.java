@@ -270,7 +270,7 @@ public class ReservationService {
             throw new IllegalStateException("Only able to cancel future reservations.");
         }
 
-        Role role = request.getRole();
+        Role role = request.role();
         UserProfile cancellingUser = getEnabledUserProfile(role);
         if (HOST.equals(role)) {
             if (!hostOwnsTheSpace(reservation, cancellingUser)){
@@ -283,7 +283,7 @@ public class ReservationService {
         }
 
         reservation.setStatus(CANCELLED);
-        reservation.setCancellationReason(request.getCancellationReason());
+        reservation.setCancellationReason(request.cancellationReason());
         reservation.setCancelledAt(now);
         reservation.setCancelledByProfile(cancellingUser);
     }
