@@ -81,9 +81,7 @@ class UserControllerTest {
         signupRequest.setPassword("password123456");
         signupRequest.setRole(Role.RENTER);
 
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setNickname("John");
-        roleProfile.setBio("Test bio");
+        RoleProfileRequest roleProfile = new RoleProfileRequest("John", "Test bio");
         signupRequest.setRoleProfile(roleProfile);
 
         return signupRequest;

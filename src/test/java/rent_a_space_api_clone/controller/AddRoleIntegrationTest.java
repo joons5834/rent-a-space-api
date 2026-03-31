@@ -56,24 +56,15 @@ class AddRoleIntegrationTest {
         signupRequest.setPassword("password12345");
         signupRequest.setRole(role);
 
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setBio("Test bio");
-        roleProfile.setNickname("TestNick");
+        RoleProfileRequest roleProfile = new RoleProfileRequest("TestNick", "Test bio");
         signupRequest.setRoleProfile(roleProfile);
 
         return signupRequest;
     }
 
     private AddRoleRequest createAddRoleRequest(Role role, String nickname, String bio) {
-        AddRoleRequest request = new AddRoleRequest();
-        request.setRole(role);
-
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setNickname(nickname);
-        roleProfile.setBio(bio);
-        request.setRoleProfile(roleProfile);
-
-        return request;
+        RoleProfileRequest roleProfile = new RoleProfileRequest(nickname, bio);
+        return new AddRoleRequest(role, roleProfile);
     }
 
     private MockHttpSession loginAndGetSession(String email, String password) throws Exception {
@@ -227,13 +218,7 @@ class AddRoleIntegrationTest {
         Long userId = createUserAndGetId("user@example.com", Role.RENTER);
         MockHttpSession session = loginAndGetSession("user@example.com", "password12345");
 
-        AddRoleRequest addRoleRequest = new AddRoleRequest();
-        addRoleRequest.setRole(null);
-
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setNickname("Nick");
-        roleProfile.setBio("Bio");
-        addRoleRequest.setRoleProfile(roleProfile);
+        AddRoleRequest addRoleRequest = createAddRoleRequest(null, "Nick", "Bio");
 
         // When & Then
         mockMvc.perform(post("/v0/users/{id}/roles", userId)
@@ -250,9 +235,8 @@ class AddRoleIntegrationTest {
         Long userId = createUserAndGetId("user@example.com", Role.RENTER);
         MockHttpSession session = loginAndGetSession("user@example.com", "password12345");
 
-        AddRoleRequest addRoleRequest = new AddRoleRequest();
-        addRoleRequest.setRole(Role.HOST);
-        addRoleRequest.setRoleProfile(null);
+        AddRoleRequest addRoleRequest = new AddRoleRequest(Role.HOST, null);
+
 
         // When & Then
         mockMvc.perform(post("/v0/users/{id}/roles", userId)

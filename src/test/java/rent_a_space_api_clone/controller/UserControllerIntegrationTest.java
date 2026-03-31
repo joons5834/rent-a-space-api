@@ -52,9 +52,7 @@ class UserControllerIntegrationTest {
         signupRequest.setPassword("integrationtest123");
         signupRequest.setRole(Role.RENTER);
 
-        RoleProfileRequest roleProfile = new RoleProfileRequest();
-        roleProfile.setBio("integrationTestBio");
-        roleProfile.setNickname("integ_nick");
+        RoleProfileRequest roleProfile = new RoleProfileRequest("integ_nick", "integrationTestBio");
         signupRequest.setRoleProfile(roleProfile);
 
         return signupRequest;

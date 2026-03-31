@@ -81,8 +81,8 @@ public class UserService {
         UserProfile profile = new UserProfile();
         profile.setUser(savedUser);
         profile.setRole(request.getRole()); // Store role in uppercase
-        profile.setNickname(request.getRoleProfile().getNickname());
-        profile.setBio(request.getRoleProfile().getBio());
+        profile.setNickname(request.getRoleProfile().nickname());
+        profile.setBio(request.getRoleProfile().bio());
         profile.setEnabled(isEnabledByDefault(request.getRole()));
 
         UserProfile savedProfile = userProfileRepository.save(profile);
@@ -111,17 +111,17 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
         // Check if the user already has this role
-        if (userProfileRepository.existsByUserIdAndRole(userId, request.getRole())) {
-            throw new RoleAlreadyExistsException("User already has role: " + request.getRole());
+        if (userProfileRepository.existsByUserIdAndRole(userId, request.role())) {
+            throw new RoleAlreadyExistsException("User already has role: " + request.role());
         }
 
         // Create new user profile with the specified role
         UserProfile profile = new UserProfile();
         profile.setUser(user);
-        profile.setRole(request.getRole());
-        profile.setNickname(request.getRoleProfile().getNickname());
-        profile.setBio(request.getRoleProfile().getBio());
-        profile.setEnabled(isEnabledByDefault(request.getRole()));
+        profile.setRole(request.role());
+        profile.setNickname(request.roleProfile().nickname());
+        profile.setBio(request.roleProfile().bio());
+        profile.setEnabled(isEnabledByDefault(request.role()));
 
         UserProfile savedProfile = userProfileRepository.save(profile);
 
