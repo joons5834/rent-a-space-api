@@ -1,5 +1,7 @@
 package rent_a_space_api_clone.controller;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -257,16 +259,16 @@ public class SpaceControllerTest {
         Long spaceId = spaceRepository.save(space).getId();
 
         // Update some fields
-        UpdateSpaceRequest updateRequest = new UpdateSpaceRequest();
-        updateRequest.setName("Updated Name");
-        updateRequest.setDescription("Updated Description");
-        updateRequest.setOpensAt("08:00:00");
-        updateRequest.setClosesAt("18:00:00");
-        updateRequest.setIsVisible(false);
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("name", "Updated Name");
+        updateRequest.put("description", "Updated Description");
+        updateRequest.put("opens_at" , "08:00:00");
+        updateRequest.put("closes_at" , "18:00:00");
+        updateRequest.put("is_visible" , false);
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(updateRequest)))
+                        .content(updateRequest.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Updated Name"))
                 .andExpect(jsonPath("$.data.description").value("Updated Description"))
@@ -302,12 +304,12 @@ public class SpaceControllerTest {
         Long spaceId = spaceRepository.save(space).getId();
 
         // Update only name
-        UpdateSpaceRequest updateRequest = new UpdateSpaceRequest();
-        updateRequest.setName("Changed Name");
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("name", "Changed Name");
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(updateRequest)))
+                        .content(updateRequest.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Changed Name"))
                 // Description should remain unchanged
@@ -330,11 +332,11 @@ public class SpaceControllerTest {
         Long spaceId = spaceRepository.save(space).getId();
 
         // Empty update request
-        UpdateSpaceRequest updateRequest = new UpdateSpaceRequest();
+        String updateRequest = "{}";
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(updateRequest)))
+                        .content(updateRequest))
                 .andExpect(status().isBadRequest());
     }
 
@@ -342,12 +344,12 @@ public class SpaceControllerTest {
     @Transactional
     void updateSpace_NotFound() throws Exception {
         // Try to update non-existing space
-        UpdateSpaceRequest updateRequest = new UpdateSpaceRequest();
-        updateRequest.setName("New Name");
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("name", "New Name");
 
         mockMvc.perform(patch("/v0/spaces/{id}", 999L)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(updateRequest)))
+                        .content(updateRequest.toString()))
                 .andExpect(status().isForbidden());
     }
 
@@ -377,13 +379,13 @@ public class SpaceControllerTest {
 
         // For simplicity, not saving here, just test the update
 
-        UpdateSpaceRequest updateRequest = new UpdateSpaceRequest();
-        updateRequest.setMainImageUrl("https://example.com/image1.png");
-        updateRequest.setImagesUrls(List.of("https://example.com/image2.png"));
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("main_image_url", "https://example.com/image1.png");
+        updateRequest.put("images_urls", new JSONArray(List.of("https://example.com/image2.png")));
 
         mockMvc.perform(patch("/v0/spaces/{id}", spaceId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonMapper.writeValueAsString(updateRequest)))
+                        .content(updateRequest.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.main_image_url").value("https://example.com/image1.png"))
                 .andExpect(jsonPath("$.data.images_urls.length()").value(1))
