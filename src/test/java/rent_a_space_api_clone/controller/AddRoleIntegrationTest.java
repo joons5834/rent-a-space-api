@@ -50,16 +50,9 @@ class AddRoleIntegrationTest {
     }
 
     private SignupRequest createSignupRequest(String email, Role role) {
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setEmail(email);
-        signupRequest.setPhone("1234567890");
-        signupRequest.setPassword("password12345");
-        signupRequest.setRole(role);
-
         RoleProfileRequest roleProfile = new RoleProfileRequest("TestNick", "Test bio");
-        signupRequest.setRoleProfile(roleProfile);
-
-        return signupRequest;
+        return new SignupRequest(email, "1234567890", "password12345",
+                role, roleProfile);
     }
 
     private AddRoleRequest createAddRoleRequest(Role role, String nickname, String bio) {

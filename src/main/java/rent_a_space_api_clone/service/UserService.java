@@ -62,15 +62,15 @@ public class UserService {
     @Transactional
     public UserResponse createUser(SignupRequest request) {
         // Check if user already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new UserAlreadyExistsException("User with email " + request.getEmail() + " already exists");
+        if (userRepository.existsByEmail(request.email())) {
+            throw new UserAlreadyExistsException("User with email " + request.email() + " already exists");
         }
 
         // Create user
         User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPhone(request.getPhone());
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPhone(request.phone());
         user.setEnabled(true);
         user.setCreatedAt(OffsetDateTime.now());  // Explicit timing
 
@@ -80,10 +80,10 @@ public class UserService {
         // Create user profile with the specified role
         UserProfile profile = new UserProfile();
         profile.setUser(savedUser);
-        profile.setRole(request.getRole()); // Store role in uppercase
-        profile.setNickname(request.getRoleProfile().nickname());
-        profile.setBio(request.getRoleProfile().bio());
-        profile.setEnabled(isEnabledByDefault(request.getRole()));
+        profile.setRole(request.role()); // Store role in uppercase
+        profile.setNickname(request.roleProfile().nickname());
+        profile.setBio(request.roleProfile().bio());
+        profile.setEnabled(isEnabledByDefault(request.role()));
 
         UserProfile savedProfile = userProfileRepository.save(profile);
 

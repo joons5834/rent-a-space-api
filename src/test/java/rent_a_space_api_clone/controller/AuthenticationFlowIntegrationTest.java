@@ -50,16 +50,9 @@ class AuthenticationFlowIntegrationTest {
     }
 
     private SignupRequest createValidSignupRequest(String email) {
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setEmail(email);
-        signupRequest.setPhone("1234567890");
-        signupRequest.setPassword("flowtest123456");
-        signupRequest.setRole(Role.RENTER);
-
         RoleProfileRequest roleProfile = new RoleProfileRequest("flowTestNick", "flowTestBio");
-        signupRequest.setRoleProfile(roleProfile);
-
-        return signupRequest;
+        return new SignupRequest(email, "1234567890", "flowtest123456",
+                Role.RENTER, roleProfile);
     }
 
     @Test
@@ -109,7 +102,7 @@ class AuthenticationFlowIntegrationTest {
 
         // 1. Create RENTER user
         SignupRequest renterRequest = createValidSignupRequest("renter@example.com");
-        renterRequest.setRole(Role.RENTER);
+        renterRequest = renterRequest.withRole(Role.RENTER);
 
         mockMvc.perform(post("/v0/users")
                         .session(renterSession)
@@ -120,7 +113,7 @@ class AuthenticationFlowIntegrationTest {
 
         // 2. Create HOST user
         SignupRequest hostRequest = createValidSignupRequest("host@example.com");
-        hostRequest.setRole(Role.HOST);
+        hostRequest = hostRequest.withRole(Role.HOST);
 
         mockMvc.perform(post("/v0/users")
                         .session(hostSession)

@@ -75,16 +75,9 @@ class UserControllerTest {
     }
 
     private SignupRequest createValidSignupRequest() {
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setEmail("john.doe@example.com");
-        signupRequest.setPhone("1234567890");
-        signupRequest.setPassword("password123456");
-        signupRequest.setRole(Role.RENTER);
-
         RoleProfileRequest roleProfile = new RoleProfileRequest("John", "Test bio");
-        signupRequest.setRoleProfile(roleProfile);
-
-        return signupRequest;
+        return new SignupRequest("john.doe@example.com", "1234567890",
+                "password123456", Role.RENTER, roleProfile);
     }
 
     // SIGNUP TESTS
@@ -122,7 +115,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenEmailIsInvalid() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setEmail("invalid-email");
+        signupRequest = signupRequest.withEmail("invalid-email");
 
         // When & Then
         mockMvc.perform(post("/v0/users")
@@ -137,7 +130,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenPasswordTooShort() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setPassword("short");
+        signupRequest = signupRequest.withPassword("short");
 
         // When & Then
         mockMvc.perform(post("/v0/users")
@@ -152,7 +145,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenPasswordTooLong() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setPassword("a".repeat(129)); // 129 characters
+        signupRequest = signupRequest.withPassword("a".repeat(129)); // 129 characters
 
         // When & Then
         mockMvc.perform(post("/v0/users")
@@ -167,7 +160,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenPhoneTooShort() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setPhone("123456789"); // 9 characters
+        signupRequest = signupRequest.withPhone("123456789"); // 9 characters
 
         // When & Then
         mockMvc.perform(post("/v0/users")
@@ -182,7 +175,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenRoleIsNull() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setRole(null);
+        signupRequest = signupRequest.withRole(null);
 
         // When & Then
         mockMvc.perform(post("/v0/users")
@@ -197,7 +190,7 @@ class UserControllerTest {
     void signup_ShouldReturnBadRequest_WhenRoleProfileIsNull() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest();
-        signupRequest.setRoleProfile(null);
+        signupRequest = signupRequest.withRoleProfile(null);
 
         // When & Then
         mockMvc.perform(post("/v0/users")

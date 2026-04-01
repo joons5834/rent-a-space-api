@@ -46,16 +46,9 @@ class UserControllerIntegrationTest {
     }
 
     private SignupRequest createValidSignupRequest(String email) {
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setEmail(email);
-        signupRequest.setPhone("1234567890");
-        signupRequest.setPassword("integrationtest123");
-        signupRequest.setRole(Role.RENTER);
-
         RoleProfileRequest roleProfile = new RoleProfileRequest("integ_nick", "integrationTestBio");
-        signupRequest.setRoleProfile(roleProfile);
-
-        return signupRequest;
+        return new SignupRequest(email, "1234567890", "integrationtest123",
+                Role.RENTER, roleProfile);
     }
 
     // SIGNUP INTEGRATION TESTS
@@ -99,7 +92,7 @@ class UserControllerIntegrationTest {
     void signup_ShouldCreateHostUser_WhenHostRole() throws Exception {
         // Given
         SignupRequest signupRequest = createValidSignupRequest("host@example.com");
-        signupRequest.setRole(Role.HOST);
+        signupRequest = signupRequest.withRole(Role.HOST);
 
         // When & Then
         mockMvc.perform(post("/v0/users")
