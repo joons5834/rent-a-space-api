@@ -95,59 +95,60 @@ public class SpaceService {
         Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found with id: " + spaceId));
 
         // Update simple fields
-        if (request.getCategory() != null) {
-            Category category = categoryRepository.findByName(request.getCategory())
+        if (request.category() != null) {
+            Category category = categoryRepository.findByName(request.category())
                     .orElseThrow(() -> new IllegalArgumentException("Invalid category"));
             space.setCategory(category);
         }
-        if (request.getName() != null) {
-            space.setName(request.getName());
+        if (request.name() != null) {
+            space.setName(request.name());
         }
-        if (request.getDescription() != null) {
-            space.setDescription(request.getDescription());
+        if (request.description() != null) {
+            space.setDescription(request.description());
         }
-        if (request.getPhone1() != null) {
-            space.setPhone1(request.getPhone1());
+        if (request.phone1() != null) {
+            space.setPhone1(request.phone1());
         }
-        if (request.getPhone2() != null) {
-            space.setPhone2(request.getPhone2());
+        if (request.phone2() != null) {
+            space.setPhone2(request.phone2());
         }
-        if (request.getEmail() != null) {
-            space.setEmail(request.getEmail());
+        if (request.email() != null) {
+            space.setEmail(request.email());
         }
-        if (request.getIsClosedOnPublicHolidays() != null) {
-            space.setIsClosedAtPublicHolidays(request.getIsClosedOnPublicHolidays());
+        if (request.isClosedOnPublicHolidays() != null) {
+            space.setIsClosedAtPublicHolidays(request.isClosedOnPublicHolidays());
         }
-        if (request.getIsVisible() != null) {
-            space.setIsVisible(request.getIsVisible());
+        if (request.isVisible() != null) {
+            space.setIsVisible(request.isVisible());
         }
-        if (request.getTimezone() != null) {
-            space.setTimezone(request.getTimezone());
+        if (request.timezone() != null) {
+            space.setTimezone(request.timezone());
         }
 
         // Handle times
-        configureOpeningTimes(space, request.getIsOpen24(), request.getOpensAt(), request.getClosesAt());
+        configureOpeningTimes(space, request.isOpen24(), request.opensAt(), request.closesAt());
 
         // Handle images
-        if (request.getMainImageUrl() != null || request.getImagesUrls() != null) {
+        if (request.mainImageUrl() != null || request.imagesUrls() != null) {
             // Clear existing
             spaceImageRepository.deleteBySpace(space);
-            createAndSaveSpacesImages(space, request.getMainImageUrl(), request.getImagesUrls());
+            createAndSaveSpacesImages(space, request.mainImageUrl(), request.imagesUrls());
         }
 
         // Handle holiday rules
-        if (request.getClosesOnEvery() != null) {
+        if (request.closesOnEvery() != null) {
             // Clear existing
             holidayRuleRepository.deleteBySpace(space);
-            HolidayRule rule = configureHolidayRule(space, request.getClosesOnEvery().getType(), request.getClosesOnEvery().getDays());
+            HolidayRule rule = configureHolidayRule(space, request.closesOnEvery().type(),
+                    request.closesOnEvery().days());
             holidayRuleRepository.save(rule);
         }
 
         // Handle holiday overrides
-        if (request.getClosesOn() != null) {
+        if (request.closesOn() != null) {
             // Clear existing
             holidayOverrideRepository.deleteBySpace(space);
-            processHolidayOverridesUpdate(space, request.getClosesOn());
+            processHolidayOverridesUpdate(space, request.closesOn());
         }
 
         spaceRepository.save(space);
@@ -278,12 +279,12 @@ public class SpaceService {
         for (UpdateSpaceRequest.ClosesOn closesOnItem : closesOn) {
             HolidayOverride override = new HolidayOverride();
             override.setSpace(space);
-            override.setName(closesOnItem.getName());
-            override.setStartsAt(LocalDate.parse(closesOnItem.getStartDate()));
-            override.setEndsAt(LocalDate.parse(closesOnItem.getLastDate()));
+            override.setName(closesOnItem.name());
+            override.setStartsAt(LocalDate.parse(closesOnItem.startDate()));
+            override.setEndsAt(LocalDate.parse(closesOnItem.lastDate()));
             override.setIsClosed(true);
-            if (closesOnItem.getDays() != null) {
-                override.setDayMask(calculateDayMask(closesOnItem.getDays()));
+            if (closesOnItem.days() != null) {
+                override.setDayMask(calculateDayMask(closesOnItem.days()));
             }
             override.setPriorityWeight(0); // default
             overrides.add(override);
