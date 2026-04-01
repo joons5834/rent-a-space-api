@@ -82,7 +82,7 @@ public class UserController {
         // Update security context if user is adding role to themselves
         Authentication currentAuth = securityContextHolderStrategy.getContext().getAuthentication();
         if (currentAuth != null
-                && currentAuth.getName().equals(userResponse.getEmail())
+                && currentAuth.getName().equals(userResponse.email())
                 && !request.role().equals(Role.ADMIN)) {
             // Copy existing authorities and add the new role
             Collection<GrantedAuthority> updatedAuthorities = new ArrayList<>(currentAuth.getAuthorities());
