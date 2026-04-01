@@ -85,7 +85,7 @@ class AddRoleIntegrationTest {
 
         UserResponse userResponse = jsonMapper.readValue(responseBody, UserResponse.class);
 
-        Long id = userResponse.getId();
+        Long id = userResponse.id();
 
         if (role.equals(Role.ADMIN)) {
             userService.enableAdminRole(id);

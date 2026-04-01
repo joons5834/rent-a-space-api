@@ -1,32 +1,24 @@
 package rent_a_space_api_clone.dto;
 
-import lombok.Data;
-import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.NoArgsConstructor;
 import rent_a_space_api_clone.enums.Role;
 
 import java.time.OffsetDateTime;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class UserResponse {
-    private Long id;
-    private String email;
-    private String phone;
-    private Boolean enabled;
-    @JsonProperty("created_at")
-    private OffsetDateTime createdAt;
-    private Role role;
-    @JsonProperty("role_profile")
-    private RoleProfileResponse roleProfile;
+public record UserResponse(
+        Long id,
+        String email,
+        String phone,
+        Boolean enabled,
+        @JsonProperty("created_at")
+        OffsetDateTime createdAt,
+        Role role,
+        @JsonProperty("role_profile")
+        RoleProfileResponse roleProfile
+) {
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class RoleProfileResponse {
-        private String nickname;
-        private String bio;
-    }
+    public record RoleProfileResponse(
+            String nickname,
+            String bio
+        ) {}
 }
