@@ -101,8 +101,22 @@ public class ReservationListControllerTest {
         renterProfile.setNickname("TestRenter");
         userProfileRepository.save(renterProfile);
 
+        User anotherRenterUser = new User();
+        anotherRenterUser.setEmail("another_renter@example.com");
+        anotherRenterUser.setPassword("password");
+        anotherRenterUser.setEnabled(true);
+        userRepository.save(anotherRenterUser);
+
+        UserProfile anotherRenterProfile = new UserProfile();
+        anotherRenterProfile.setUser(anotherRenterUser);
+        anotherRenterProfile.setRole(Role.RENTER);
+        anotherRenterProfile.setEnabled(true);
+        anotherRenterProfile.setNickname("AnotherTestRenter");
+        userProfileRepository.save(anotherRenterProfile);
+
         // Create some reservations
         List<Reservation> reservations = new ArrayList<>();
+
         for (int i = 1; i <= 5; i++) {
             Reservation r = new Reservation();
             r.setSubspace(testSubspace);
@@ -115,6 +129,17 @@ public class ReservationListControllerTest {
             r.setCreatedAt(OffsetDateTime.now());
             reservations.add(r);
         }
+
+        Reservation r = new Reservation();
+        r.setSubspace(testSubspace);
+        r.setRenterProfile(anotherRenterProfile);
+        r.setTimezone(ZoneId.of("UTC"));
+        r.setStartsAt(ZonedDateTime.of(2026, 4, 6, 10, 0, 0, 0, ZoneId.of("UTC")));
+        r.setEndsAt(ZonedDateTime.of(2026, 4, 6, 12, 0, 0, 0, ZoneId.of("UTC")));
+        r.setStatus(ReservationStatus.CONFIRMED);
+        r.setRenterName("AnotherRenter1");
+        r.setCreatedAt(OffsetDateTime.now());
+        reservations.add(r);
         reservationRepository.saveAll(reservations);
     }
 
@@ -163,8 +188,8 @@ public class ReservationListControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reservations", hasSize(2)))
-                .andExpect(jsonPath("$.reservations[0].starts_at", containsString("2026-04-05T10:00:00")))
-                .andExpect(jsonPath("$.reservations[1].starts_at", containsString("2026-04-04T10:00:00")))
+                .andExpect(jsonPath("$.reservations[0].starts_at", containsString("2026-04-06T10:00:00")))
+                .andExpect(jsonPath("$.reservations[1].starts_at", containsString("2026-04-05T10:00:00")))
                 .andExpect(jsonPath("$.next_cursor").exists());
     }
 
