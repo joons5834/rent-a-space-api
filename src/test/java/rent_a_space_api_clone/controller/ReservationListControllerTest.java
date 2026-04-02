@@ -1,12 +1,12 @@
 package rent_a_space_api_clone.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class HostReservationControllerTest {
+public class ReservationListControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,9 +52,6 @@ public class HostReservationControllerTest {
     @Autowired
     private ReservationRepository reservationRepository;
 
-    private UserProfile hostProfile;
-    private Subspace testSubspace;
-
     @BeforeEach
     void setUp() {
         Category category = categoryRepository.findByName("meeting")
@@ -70,7 +67,7 @@ public class HostReservationControllerTest {
         hostUser.setEnabled(true);
         userRepository.save(hostUser);
 
-        hostProfile = new UserProfile();
+        UserProfile hostProfile = new UserProfile();
         hostProfile.setUser(hostUser);
         hostProfile.setRole(Role.HOST);
         hostProfile.setEnabled(true);
@@ -85,7 +82,7 @@ public class HostReservationControllerTest {
         testSpace.setTimezone(ZoneId.of("UTC"));
         testSpace = spaceRepository.save(testSpace);
 
-        testSubspace = new Subspace();
+        Subspace testSubspace = new Subspace();
         testSubspace.setName("Test Subspace");
         testSubspace.setSpace(testSpace);
         testSubspace.setIsVisible(true);
@@ -145,6 +142,18 @@ public class HostReservationControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
+    void getRenterReservations_OrderById_Success() throws Exception {
+        mockMvc.perform(get("/v0/renter/reservations")
+                        .param("orderBy", "id")
+                        .param("limit", "2"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations", hasSize(2)))
+                .andExpect(jsonPath("$.next_cursor").exists());
+    }
+
+    @Test
     @WithMockUser(username = "host@example.com", roles = {"HOST"})
     @Transactional
     void getHostReservations_OrderByStartsAt_Success() throws Exception {
@@ -160,10 +169,36 @@ public class HostReservationControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
+    @Transactional
+    void getRenterReservations_OrderByStartsAt_Success() throws Exception {
+        mockMvc.perform(get("/v0/renter/reservations")
+                        .param("orderBy", "starts_at")
+                        .param("limit", "2"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations", hasSize(2)))
+                .andExpect(jsonPath("$.reservations[0].starts_at", containsString("2026-04-05T10:00:00")))
+                .andExpect(jsonPath("$.reservations[1].starts_at", containsString("2026-04-04T10:00:00")))
+                .andExpect(jsonPath("$.next_cursor").exists());
+    }
+
+    @Test
     @WithMockUser(username = "host@example.com", roles = {"HOST"})
     @Transactional
     void getHostReservations_FilterByStatus_Success() throws Exception {
         mockMvc.perform(get("/v0/host/reservations")
+                        .param("status", "CONFIRMED"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations", everyItem(hasEntry("status", "CONFIRMED"))));
+    }
+
+    @Test
+    @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
+    @Transactional
+    void getRenterReservations_FilterByStatus_Success() throws Exception {
+        mockMvc.perform(get("/v0/renter/reservations")
                         .param("status", "CONFIRMED"))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -201,8 +236,44 @@ public class HostReservationControllerTest {
     @Test
     @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
     @Transactional
+    void getRenterReservations_Paginarion_Success() throws Exception {
+        //First Page
+        String content = mockMvc.perform(get("/v0/renter/reservations")
+                                .with(user("renter@example.com").roles("RENTER"))
+                                .param("orderBy", "id")
+                                .param("limit", "2"))
+                        .andDo(print())
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.reservations", hasSize(2)))
+                        .andReturn().getResponse().getContentAsString();
+
+        Object cursorObj = JsonPath.read(content, "$.next_cursor");
+        String nextCursor = cursorObj != null ? cursorObj.toString() : null;
+
+        //Second Page
+        mockMvc.perform(get("/v0/renter/reservations")
+                        .with(user("renter@example.com").roles("RENTER"))
+                        .param("orderBy", "id")
+                        .param("limit", "2")
+                        .param("cursor", nextCursor))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations", hasSize(2)));
+    }
+
+    @Test
+    @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
+    @Transactional
     void getHostReservations_ForbiddenForRenter() throws Exception {
         mockMvc.perform(get("/v0/host/reservations"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "host@example.com", roles = {"HOST"})
+    @Transactional
+    void getRenterReservations_ForbiddenForHost() throws Exception {
+        mockMvc.perform(get("/v0/renter/reservations"))
                 .andExpect(status().isForbidden());
     }
 }

@@ -4,10 +4,9 @@ import rent_a_space_api_clone.enums.ReservationStatus;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 
-public record HostReservationResponse(
+public record ReservationListResponse(
     List<ReservationInfo> reservations,
     String nextCursor
 ) {
