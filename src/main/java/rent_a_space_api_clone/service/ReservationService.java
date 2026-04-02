@@ -47,10 +47,19 @@ public class ReservationService {
             int limit,
             Role role) {
 
+        if (role != HOST && role != RENTER) {
+            throw new PermissionDeniedException(
+                    "Reservation list is only available for host and renter profiles"
+            );
+        }
+
         UserProfile userProfile = getEnabledUserProfile(role);
 
         List<Reservation> reservations;
         Pageable pageable = PageRequest.of(0, limit);
+
+        Long hostProfileId = HOST.equals(role) ? userProfile.getId() : null;
+        Long renterProfileId = RENTER.equals(role) ? userProfile.getId() : null;
 
         if ("starts_at".equals(orderBy)) {
             ZonedDateTime cursorStartsAt = null;
@@ -63,15 +72,15 @@ public class ReservationService {
                 }
             }
             reservations = reservationRepository.findReservationsOrderByStartsAt(
-                    HOST.equals(role) ? userProfile.getId() : null,
-                    RENTER.equals(role) ? userProfile.getId() : null,
+                    hostProfileId,
+                    renterProfileId,
                     status, cursorStartsAt, cursorId, pageable);
         } else {
             // Default: orderBy=id
             Long cursorId = (cursor != null && !cursor.isEmpty()) ? Long.parseLong(cursor) : null;
             reservations = reservationRepository.findReservationsOrderById(
-                    HOST.equals(role) ? userProfile.getId() : null,
-                    RENTER.equals(role) ? userProfile.getId() : null,
+                    hostProfileId,
+                    renterProfileId,
                     status, cursorId, pageable);
         }
 
