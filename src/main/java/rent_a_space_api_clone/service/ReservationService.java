@@ -34,20 +34,20 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final SubspaceRepository subspaceRepository;
-    private final SpaceRepository spaceRepository;
     private final UserProfileRepository userProfileRepository;
     private final HolidayGeneratorService holidayGeneratorService;
 
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public HostReservationResponse getHostReservations(
+    public ReservationListResponse getReservations(
             String orderBy,
             ReservationStatus status,
             String cursor,
-            int limit) {
+            int limit,
+            Role role) {
 
-        UserProfile hostProfile = getEnabledUserProfile(HOST);
+        UserProfile userProfile = getEnabledUserProfile(role);
 
         List<Reservation> reservations;
         Pageable pageable = PageRequest.of(0, limit);
@@ -62,27 +62,31 @@ public class ReservationService {
                     cursorId = Long.parseLong(parts[1]);
                 }
             }
-            reservations = reservationRepository.findHostReservationsOrderByStartsAt(
-                    hostProfile.getId(), status, cursorStartsAt, cursorId, pageable);
+            reservations = reservationRepository.findReservationsOrderByStartsAt(
+                    HOST.equals(role) ? userProfile.getId() : null,
+                    RENTER.equals(role) ? userProfile.getId() : null,
+                    status, cursorStartsAt, cursorId, pageable);
         } else {
             // Default: orderBy=id
             Long cursorId = (cursor != null && !cursor.isEmpty()) ? Long.parseLong(cursor) : null;
-            reservations = reservationRepository.findHostReservationsOrderById(
-                    hostProfile.getId(), status, cursorId, pageable);
+            reservations = reservationRepository.findReservationsOrderById(
+                    HOST.equals(role) ? userProfile.getId() : null,
+                    RENTER.equals(role) ? userProfile.getId() : null,
+                    status, cursorId, pageable);
         }
 
         String nextCursor = null;
         if (reservations.size() == limit) {
             Reservation last = reservations.get(reservations.size() - 1);
             if ("starts_at".equals(orderBy)) {
-                nextCursor = last.getStartsAt().toOffsetDateTime().toString() + "|" + last.getId();
+                nextCursor = last.getStartsAt().toOffsetDateTime() + "|" + last.getId();
             } else {
                 nextCursor = last.getId().toString();
             }
         }
 
-        List<HostReservationResponse.ReservationInfo> reservationInfos = reservations.stream()
-                .map(r -> new HostReservationResponse.ReservationInfo(
+        List<ReservationListResponse.ReservationInfo> reservationInfos = reservations.stream()
+                .map(r -> new ReservationListResponse.ReservationInfo(
                         r.getId(),
                         r.getTimezone(),
                         r.getStartsAt().withZoneSameInstant(r.getTimezone()).toLocalDateTime(),
@@ -94,7 +98,7 @@ public class ReservationService {
                 ))
                 .toList();
 
-        return new HostReservationResponse(reservationInfos, nextCursor);
+        return new ReservationListResponse(reservationInfos, nextCursor);
     }
 
     @Transactional
