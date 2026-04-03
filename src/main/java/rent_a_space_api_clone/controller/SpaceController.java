@@ -24,6 +24,16 @@ public class SpaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/v0/spaces")
+    public ResponseEntity<SpacesListResponse> getSpaces(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false, defaultValue = "10") int limit,
+            @RequestParam(required = false) String cursor
+    ) {
+        SpacesListResponse response = spaceService.getSpacesList(category, limit, cursor);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/v0/host/spaces/{id}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSpaceOwner(#id, authentication.name))")
     public ResponseEntity<SpaceResponse> getSpaceById(@PathVariable Long id) {

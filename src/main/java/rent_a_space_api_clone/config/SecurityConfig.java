@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/v0/login").permitAll()
                         .requestMatchers(HttpMethod.POST,"/v0/users").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v0/spaces").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling((exceptions) -> exceptions

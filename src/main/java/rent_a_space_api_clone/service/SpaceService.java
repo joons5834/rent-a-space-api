@@ -2,6 +2,8 @@ package rent_a_space_api_clone.service;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -425,5 +427,45 @@ public class SpaceService {
                 mainImageUrl, imageUrls, minHours,
                 maxHours, isVisible);
         return new SubspaceResponse(subspaceData);
+    }
+
+    @Transactional(readOnly = true)
+    public SpacesListResponse getSpacesList(String category, int limit, String cursor) {
+
+        List<Space> spaces;
+        Pageable pageable = PageRequest.of(0, limit);
+
+        Long cursorId = null;
+        if (cursor != null && !cursor.isBlank()) {
+            try {
+                cursorId = Long.parseLong(cursor);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Illegal cursorId format.\n" +
+                        "Should be in a number format");
+            }
+        }
+
+        spaces = spaceRepository.findSpacesByCategory(category, cursorId, pageable);
+
+        String nextCursor = null;
+        if (spaces.size() == limit) {
+            Space last = spaces.get(spaces.size() - 1);
+            nextCursor = last.getId().toString();
+        }
+
+        List<SpacesListResponse.SpacesData.SpaceBrief> spaceBriefs =
+                spaces.stream()
+                        .map(s -> new SpacesListResponse.SpacesData.SpaceBrief(
+                                s.getId(),
+                                s.getName(),
+                                s.getCategory().getName(),
+                                (s.getImages() == null || s.getImages().isEmpty()) ? null :
+                                        s.getImages().get(0).getImage().getFullUrl()
+                        ))
+                        .toList();
+
+        return new SpacesListResponse(new SpacesListResponse.SpacesData(
+                spaceBriefs, nextCursor
+        ));
     }
 }
