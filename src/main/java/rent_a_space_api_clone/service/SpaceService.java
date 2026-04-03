@@ -459,7 +459,8 @@ public class SpaceService {
                                 s.getId(),
                                 s.getName(),
                                 s.getCategory().getName(),
-                                s.getImages().get(0).getImage().getFullUrl()
+                                (s.getImages() == null || s.getImages().isEmpty()) ? null :
+                                        s.getImages().get(0).getImage().getFullUrl()
                         ))
                         .toList();
 
