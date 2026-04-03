@@ -261,7 +261,7 @@ public class ReservationListControllerTest {
     @Test
     @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
     @Transactional
-    void getRenterReservations_Paginarion_Success() throws Exception {
+    void getRenterReservations_Pagination_Success() throws Exception {
         //First Page
         String content = mockMvc.perform(get("/v0/renter/reservations")
                                 .with(user("renter@example.com").roles("RENTER"))
