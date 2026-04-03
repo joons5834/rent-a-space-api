@@ -34,6 +34,12 @@ public class SpaceController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/v0/spaces/{id}")
+    public ResponseEntity<SpacePublicResponse> getSpacePublicViewById(@PathVariable Long id) {
+        SpacePublicResponse response = spaceService.buildSpacePublicResponse(id);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/v0/host/spaces/{id}")
     @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSpaceOwner(#id, authentication.name))")
     public ResponseEntity<SpaceResponse> getSpaceById(@PathVariable Long id) {
