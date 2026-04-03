@@ -294,6 +294,25 @@ public class SpaceService {
         holidayOverrideRepository.saveAll(overrides);
     }
 
+    public SpacePublicResponse buildSpacePublicResponse(Long spaceId) {
+        Space space = spaceRepository.findById(spaceId).orElseThrow(
+                () -> new ResourceNotFoundException("Space not found with id: " + spaceId));
+        List<String> spaceImagesUrls = space.getImages().stream().map(
+                        spaceImg -> spaceImg.getImage().getFullUrl())
+                .toList();
+        List<SpacePublicResponse.SubspaceBrief> subspaceBriefs = space.getSubspaces().stream().map(
+                subspace -> new SpacePublicResponse.SubspaceBrief(
+                        subspace.getId(), subspace.getName()
+                )
+        ).toList();
+        SpacePublicResponse.SpacePublicData spacePublicData = new SpacePublicResponse.SpacePublicData(
+                space.getId(), space.getName(), space.getDescription(),
+                spaceImagesUrls,
+                space.getTimezone(),
+                subspaceBriefs
+        );
+        return new SpacePublicResponse(spacePublicData);
+    }
 
     public SpaceResponse buildSpaceResponse(Long spaceId) {
         Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found with id: " + spaceId));
@@ -468,4 +487,6 @@ public class SpaceService {
                 spaceBriefs, nextCursor
         ));
     }
+
+
 }

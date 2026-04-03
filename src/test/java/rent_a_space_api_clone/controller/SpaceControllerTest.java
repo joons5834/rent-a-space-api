@@ -1,5 +1,6 @@
 package rent_a_space_api_clone.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterEach;
@@ -12,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.CreateSubspaceRequest;
@@ -29,9 +31,10 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -608,5 +611,50 @@ public class SpaceControllerTest {
                         .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Valid Name"));
+    }
+
+    @Test
+    void publicViewOfSpace_Success() throws Exception {
+        JSONObject createSpaceRequestObj = new JSONObject();
+        createSpaceRequestObj.put("category", "practice");
+        createSpaceRequestObj.put("name", "Test Space");
+        createSpaceRequestObj.put("is_visible", true);
+        createSpaceRequestObj.put("main_image_url", "https://example.com/image1.png");
+        createSpaceRequestObj.put("images_urls", new JSONArray(
+                List.of("https://example.com/image2.png")
+        ));
+        createSpaceRequestObj.put("timezone", "Asia/Seoul");
+
+        MvcResult mvcResult = mockMvc.perform(post("/v0/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSpaceRequestObj.toString()))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String spaceResponse = mvcResult.getResponse().getContentAsString();
+        Object spaceIdObj = JsonPath.read(spaceResponse, "$.data.id");
+        String spaceId = spaceIdObj != null ? spaceIdObj.toString() : null;
+
+
+        String createSubspaceRequest = """
+                {
+                    "name" : "subspace 1"
+                }
+                """;
+
+        mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSubspaceRequest))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("Test Space"))
+                .andExpect(jsonPath("$.data.images_urls.length()").value(2))
+                .andExpect(jsonPath("$.data.images_urls",
+                        contains("https://example.com/image1.png", "https://example.com/image2.png")))
+                .andExpect(jsonPath("$.data.subspaces[0].name").value("subspace 1"));
+
     }
 }
