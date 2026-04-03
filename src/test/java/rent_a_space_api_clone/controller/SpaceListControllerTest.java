@@ -76,7 +76,6 @@ public class SpaceListControllerTest {
             imageRepository.save(mainImage);
         }
 
-        List<Space> spaces = new ArrayList<>();
 
         for (int i = 1; i <= 9; i++) {
             JSONObject spaceCreateRequest = new JSONObject();
@@ -93,7 +92,6 @@ public class SpaceListControllerTest {
                             .content(spaceCreateRequest.toString()))
                     .andExpect(status().isCreated());
         }
-        spaceRepository.saveAll(spaces);
     }
 
     @AfterEach
