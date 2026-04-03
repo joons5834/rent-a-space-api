@@ -33,6 +33,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -648,7 +649,8 @@ public class SpaceControllerTest {
                         .content(createSubspaceRequest))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
+        mockMvc.perform(get("/v0/spaces/{id}", spaceId)
+                        .with(anonymous()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Test Space"))
                 .andExpect(jsonPath("$.data.images_urls.length()").value(2))

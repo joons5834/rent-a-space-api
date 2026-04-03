@@ -294,14 +294,17 @@ public class SpaceService {
         holidayOverrideRepository.saveAll(overrides);
     }
 
+    @Transactional(readOnly = true)
     public SpacePublicResponse buildSpacePublicResponse(Long spaceId) {
         Space space = spaceRepository.findById(spaceId).orElseThrow(
                 () -> new ResourceNotFoundException("Space not found with id: " + spaceId));
-        List<String> spaceImagesUrls = space.getImages().stream().map(
-                        spaceImg -> spaceImg.getImage().getFullUrl())
+        List<String> spaceImagesUrls = space.getImages().stream()
+                .sorted(Comparator.comparing(SpaceImage::getOrderSeq))
+                .map(spaceImg -> spaceImg.getImage().getFullUrl())
                 .toList();
-        List<SpacePublicResponse.SubspaceBrief> subspaceBriefs = space.getSubspaces().stream().map(
-                subspace -> new SpacePublicResponse.SubspaceBrief(
+        List<SpacePublicResponse.SubspaceBrief> subspaceBriefs = space.getSubspaces().stream()
+                .sorted(Comparator.comparing(Subspace::getId))
+                .map(subspace -> new SpacePublicResponse.SubspaceBrief(
                         subspace.getId(), subspace.getName()
                 )
         ).toList();
