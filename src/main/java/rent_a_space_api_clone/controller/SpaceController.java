@@ -65,4 +65,10 @@ public class SpaceController {
         SubspaceResponse response = spaceService.buildSubspaceResponse(subspaceId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/v0/subspaces/{id}")
+    public ResponseEntity<SubspacePublicResponse> getSubspacePublicView(@PathVariable Long id) {
+        SubspacePublicResponse response = spaceService.buildPublicSubspaceResponse(id);
+        return ResponseEntity.ok(response);
+    }
 }

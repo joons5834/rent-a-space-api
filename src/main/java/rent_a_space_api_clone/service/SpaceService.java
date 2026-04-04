@@ -451,6 +451,35 @@ public class SpaceService {
         return new SubspaceResponse(subspaceData);
     }
 
+    public SubspacePublicResponse buildPublicSubspaceResponse(Long subspaceId) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow();
+        if (!subspace.getIsVisible()) {
+            throw new IllegalStateException("This space is not publicly visible");
+        }
+
+        Long id = subspace.getId();
+        String name = subspace.getName();
+        String description = subspace.getDescription();
+        List<SubspaceImage> subspacesImages = subspace.getImages();
+
+        List<String> imageUrls = null;
+
+        if (subspacesImages != null && !subspacesImages.isEmpty()) {
+            imageUrls = subspacesImages
+                    .stream()
+                    .map((image) -> image.getImage().getFullUrl())
+                    .toList();
+        }
+        Integer minHours = subspace.getMinHours();
+        Integer maxHours = subspace.getMaxHours();
+
+        SubspacePublicResponse.SubspacePublicData subspacePublicData = new SubspacePublicResponse.SubspacePublicData(id, name, description,
+                imageUrls, minHours, maxHours);
+
+        return new SubspacePublicResponse(subspacePublicData);
+    }
+
+
     @Transactional(readOnly = true)
     public SpacesListResponse getSpacesList(String category, int limit, String cursor) {
 

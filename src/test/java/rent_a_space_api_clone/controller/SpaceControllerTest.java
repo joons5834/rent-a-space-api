@@ -129,6 +129,11 @@ public class SpaceControllerTest {
             image2.setFullUrl("https://example.com/image2.png");
             imageRepository.save(image2);
         }
+        if (imageRepository.findByFullUrl("https://example.com/image3.png").isEmpty()) {
+            var image3 = new rent_a_space_api_clone.entity.Image();
+            image3.setFullUrl("https://example.com/image3.png");
+            imageRepository.save(image3);
+        }
     }
 
     @Test
@@ -657,6 +662,62 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.images_urls",
                         contains("https://example.com/image1.png", "https://example.com/image2.png")))
                 .andExpect(jsonPath("$.data.subspaces[0].name").value("subspace 1"));
+
+    }
+
+    @Test
+    public void publicViewOfSubspace_Success() throws Exception {
+        JSONObject createSpaceRequestObj = new JSONObject();
+        createSpaceRequestObj.put("category", "practice");
+        createSpaceRequestObj.put("name", "Test Space");
+        createSpaceRequestObj.put("is_visible", true);
+        createSpaceRequestObj.put("timezone", "Asia/Seoul");
+
+        MvcResult mvcResult = mockMvc.perform(post("/v0/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSpaceRequestObj.toString()))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String spaceResponse = mvcResult.getResponse().getContentAsString();
+        Object spaceIdObj = JsonPath.read(spaceResponse, "$.data.id");
+        String spaceId = spaceIdObj != null ? spaceIdObj.toString() : null;
+
+        String createSubspaceRequest = """
+                {
+                    "name" : "subspace 1",
+                    "description" : "Test subspace 1",
+                    "main_image_url": "https://example.com/image1.png",
+                    "images_urls": ["https://example.com/image2.png", "https://example.com/image3.png"],
+                    "min_hours" : 2,
+                    "max_hours" : 4,
+                    "is_visible" : true
+                }
+                """;
+
+        MvcResult subspaceMvcResult = mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSubspaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String subspaceResponse = subspaceMvcResult.getResponse().getContentAsString();
+        Object subspaceIdObj = JsonPath.read(subspaceResponse, "$.data.id");
+        String subspaceId = subspaceIdObj != null ? subspaceIdObj.toString() : null;
+
+        mockMvc.perform(get("/v0/subspaces/{id}", subspaceId)
+                        .with(anonymous()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("subspace 1"))
+                .andExpect(jsonPath("$.data.description").value("Test subspace 1"))
+                .andExpect(jsonPath("$.data.images_urls.length()").value(3))
+                .andExpect(jsonPath("$.data.images_urls",
+                        contains("https://example.com/image1.png",
+                                "https://example.com/image2.png",
+                                "https://example.com/image3.png")))
+                .andExpect(jsonPath("$.data.min_hours").value(2))
+                .andExpect(jsonPath("$.data.max_hours").value(4));
 
     }
 }
