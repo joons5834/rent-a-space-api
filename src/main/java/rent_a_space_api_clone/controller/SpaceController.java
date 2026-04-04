@@ -71,4 +71,13 @@ public class SpaceController {
         SubspacePublicResponse response = spaceService.buildPublicSubspaceResponse(id);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/v0/subspaces/{id}/unavailable-dates")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UnavailableDatesResponse> getUnavailableDates(@PathVariable Long id,
+                                                                @RequestParam int year,
+                                                                @RequestParam int month) {
+        UnavailableDatesResponse unavailableDatesResponse = spaceService.getHolidaysForSubspace(id, year, month);
+        return ResponseEntity.ok(unavailableDatesResponse);
+    }
 }
