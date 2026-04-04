@@ -40,6 +40,7 @@ public class SpaceService {
             "Sun", 0, "Mon", 1, "Tue", 2, "Wed", 3, "Thu", 4, "Fri", 5, "Sat", 6
     );
     private final EntityManager entityManager;
+    private final HolidayGeneratorService holidayGeneratorService;
 
     @Transactional
     public Long createSpace(CreateSpaceRequest request) {
@@ -523,5 +524,17 @@ public class SpaceService {
         ));
     }
 
+    @Transactional(readOnly = true)
+    public UnavailableDatesResponse getHolidaysForSubspace(Long subspaceId, int year, int month) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+                () -> new ResourceNotFoundException("No subspace with subspaceId : " + subspaceId)
+        );
+        List<HolidayRule> holidayRules = subspace.getSpace().getHolidayRules();
+        List<HolidayOverride> holidayOverrides = subspace.getSpace().getHolidayOverrides();
+        List<LocalDate> holidaysForMonth = holidayGeneratorService.getHolidaysForMonth(year, month, holidayRules, holidayOverrides);
 
+        List<Integer> holidayDaysInMonth = holidaysForMonth.stream().map(LocalDate::getDayOfMonth).toList();
+        UnavailableDatesResponse.UnavailableDatesData unavailableDatesData = new UnavailableDatesResponse.UnavailableDatesData(holidayDaysInMonth);
+        return new UnavailableDatesResponse(unavailableDatesData);
+    }
 }

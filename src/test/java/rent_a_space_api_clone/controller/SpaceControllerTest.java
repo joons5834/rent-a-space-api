@@ -3,6 +3,7 @@ package rent_a_space_api_clone.controller;
 import com.jayway.jsonpath.JsonPath;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -720,4 +721,145 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.max_hours").value(4));
 
     }
+
+    @Test
+    public void unavailableDatesOfaSubspace_Success() throws Exception {
+        String createSpaceRequest = """
+                {
+                    "category": "meeting",
+                    "name": "MySpace 1",
+                    "is_closed_on_public_holidays": false,
+                    "closes_on_every": {
+                        "type": "every_week",
+                        "days": [
+                            "Mon",
+                            "Tue"
+                        ]
+                    },
+                    "closes_on": [{
+                        "name": "family emergency",
+                        "start_date": "2026-03-10",
+                        "last_date": "2026-03-20",
+                        "days": [
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                            "Sun"
+                        ]
+                    }],
+                    "timezone": "Asia/Seoul"
+                }
+                """;
+        MvcResult mvcResult = mockMvc.perform(post("/v0/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSpaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String spaceResponse = mvcResult.getResponse().getContentAsString();
+        Object spaceIdObj = JsonPath.read(spaceResponse, "$.data.id");
+        String spaceId = spaceIdObj != null ? spaceIdObj.toString() : null;
+
+        String createSubspaceRequest = """
+                { "name" : "subspace 1"}
+                """;
+
+        MvcResult subspaceMvcResult = mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSubspaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String subspaceResponse = subspaceMvcResult.getResponse().getContentAsString();
+        Object subspaceIdObj = JsonPath.read(subspaceResponse, "$.data.id");
+        String subspaceId = subspaceIdObj != null ? subspaceIdObj.toString() : null;
+
+        mockMvc.perform(get("/v0/subspaces/{id}/unavailable-dates", subspaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .param("year", "2026")
+                        .param("month", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.unavailable_dates",
+                        contains(getHolidays())))
+                .andExpect(jsonPath("$.data.unavailable_dates.length()").value(getHolidays().length));
+
+    }
+
+    private static Integer @NonNull [] getHolidays() {
+        return new Integer[]{2, 3, 9, 10, 11, 12, 13, 14, 15, 16
+                , 17, 18, 19, 20, 23, 24, 30, 31};
+    }
+
+    @Test
+    public void unavailableDatesOfaSubspace2_Success() throws Exception {
+        String createSpaceRequest = """
+                {
+                    "category": "meeting",
+                    "name": "MySpace 1",
+                    "is_closed_on_public_holidays": false,
+                    "closes_on_every": {
+                        "type": "every_odd_week",
+                        "days": [
+                            "Mon",
+                            "Tue"
+                        ]
+                    },
+                    "closes_on": [{
+                        "name": "family emergency",
+                        "start_date": "2026-03-10",
+                        "last_date": "2026-03-20",
+                        "days": [
+                            "Mon",
+                            "Tue",
+                            "Wed",
+                            "Thu",
+                            "Fri",
+                            "Sat",
+                            "Sun"
+                        ]
+                    }],
+                    "timezone": "Asia/Seoul"
+                }
+                """;
+        MvcResult mvcResult = mockMvc.perform(post("/v0/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSpaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String spaceResponse = mvcResult.getResponse().getContentAsString();
+        Object spaceIdObj = JsonPath.read(spaceResponse, "$.data.id");
+        String spaceId = spaceIdObj != null ? spaceIdObj.toString() : null;
+
+        String createSubspaceRequest = """
+                { "name" : "subspace 1"}
+                """;
+
+        MvcResult subspaceMvcResult = mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSubspaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String subspaceResponse = subspaceMvcResult.getResponse().getContentAsString();
+        Object subspaceIdObj = JsonPath.read(subspaceResponse, "$.data.id");
+        String subspaceId = subspaceIdObj != null ? subspaceIdObj.toString() : null;
+        Integer[] holidays = {2, 3, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 30, 31};
+
+        mockMvc.perform(get("/v0/subspaces/{id}/unavailable-dates", subspaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .param("year", "2026")
+                        .param("month", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.unavailable_dates",
+                        contains(holidays)))
+                .andExpect(jsonPath("$.data.unavailable_dates.length()").value(holidays.length));
+
+    }
+
 }

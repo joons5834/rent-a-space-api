@@ -1,16 +1,20 @@
 package rent_a_space_api_clone.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.service.SpaceService;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 public class SpaceController {
 
@@ -70,5 +74,14 @@ public class SpaceController {
     public ResponseEntity<SubspacePublicResponse> getSubspacePublicView(@PathVariable Long id) {
         SubspacePublicResponse response = spaceService.buildPublicSubspaceResponse(id);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/v0/subspaces/{id}/unavailable-dates")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UnavailableDatesResponse> getUnavailableDates(@PathVariable Long id,
+                                                                @RequestParam @Min(1) @Max(9999) int year,
+                                                                @RequestParam @Min(1) @Max(12) int month) {
+        UnavailableDatesResponse unavailableDatesResponse = spaceService.getHolidaysForSubspace(id, year, month);
+        return ResponseEntity.ok(unavailableDatesResponse);
     }
 }
