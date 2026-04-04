@@ -451,6 +451,38 @@ public class SpaceService {
         return new SubspaceResponse(subspaceData);
     }
 
+    public SubspacePublicResponse buildPublicSubspaceResponse(Long subspaceId) {
+        Subspace subspace = subspaceRepository.findById(subspaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subspace not found with id: " + subspaceId));
+
+        if (!Boolean.TRUE.equals(subspace.getIsVisible())) {
+            throw new ResourceNotFoundException("Subspace not found with id: " + subspaceId);
+        }
+
+        Long id = subspace.getId();
+        String name = subspace.getName();
+        String description = subspace.getDescription();
+        List<SubspaceImage> subspacesImages = subspace.getImages();
+
+        List<String> imageUrls = Optional.ofNullable(subspacesImages).orElseGet(List::of)
+                .stream()
+                .sorted(Comparator.comparing(SubspaceImage::getOrderSeq))
+                .map(SubspaceImage::getImage)
+                .filter(Objects::nonNull)
+                .map(Image::getFullUrl)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Integer minHours = subspace.getMinHours();
+        Integer maxHours = subspace.getMaxHours();
+
+        SubspacePublicResponse.SubspacePublicData subspacePublicData = new SubspacePublicResponse.SubspacePublicData(id, name, description,
+                imageUrls, minHours, maxHours);
+
+        return new SubspacePublicResponse(subspacePublicData);
+    }
+
+
     @Transactional(readOnly = true)
     public SpacesListResponse getSpacesList(String category, int limit, String cursor) {
 
