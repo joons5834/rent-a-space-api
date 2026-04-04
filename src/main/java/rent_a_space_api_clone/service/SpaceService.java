@@ -452,9 +452,11 @@ public class SpaceService {
     }
 
     public SubspacePublicResponse buildPublicSubspaceResponse(Long subspaceId) {
-        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow();
-        if (!subspace.getIsVisible()) {
-            throw new IllegalStateException("This space is not publicly visible");
+        Subspace subspace = subspaceRepository.findById(subspaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subspace not found with id: " + subspaceId));
+
+        if (!Boolean.TRUE.equals(subspace.getIsVisible())) {
+            throw new ResourceNotFoundException("Subspace not found with id: " + subspaceId);
         }
 
         Long id = subspace.getId();
@@ -462,14 +464,15 @@ public class SpaceService {
         String description = subspace.getDescription();
         List<SubspaceImage> subspacesImages = subspace.getImages();
 
-        List<String> imageUrls = null;
+        List<String> imageUrls = Optional.ofNullable(subspacesImages).orElseGet(List::of)
+                .stream()
+                .sorted(Comparator.comparing(SubspaceImage::getOrderSeq))
+                .map(SubspaceImage::getImage)
+                .filter(Objects::nonNull)
+                .map(Image::getFullUrl)
+                .filter(Objects::nonNull)
+                .toList();
 
-        if (subspacesImages != null && !subspacesImages.isEmpty()) {
-            imageUrls = subspacesImages
-                    .stream()
-                    .map((image) -> image.getImage().getFullUrl())
-                    .toList();
-        }
         Integer minHours = subspace.getMinHours();
         Integer maxHours = subspace.getMaxHours();
 
