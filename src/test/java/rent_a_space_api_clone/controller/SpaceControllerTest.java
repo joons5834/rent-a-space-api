@@ -8,8 +8,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -27,6 +30,8 @@ import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -76,12 +81,26 @@ public class SpaceControllerTest {
     @Autowired
     private SpaceImageRepository spaceImageRepository;
 
+    @Autowired
+    private ReservationRepository reservationRepository;
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        @Primary
+        public Clock FakeClockConfig(){
+            Instant fixedInstant = Instant.parse("2026-03-01T10:00:00Z");
+            return Clock.fixed(fixedInstant, ZoneId.of("UTC"));
+        }
+    }
+
     @AfterEach
     void tearDown() {
         // Delete in correct order to respect foreign key constraints
         // Child entities first, then parents
         subspaceImageRepository.deleteAll();
         spaceImageRepository.deleteAll();
+        reservationRepository.deleteAll();
         subspaceRepository.deleteAll();
         spaceRepository.deleteAll();
         categoryRepository.deleteAll();
@@ -116,6 +135,21 @@ public class SpaceControllerTest {
             profile.setRole(Role.HOST);
             profile.setEnabled(true);
             profile.setNickname("TestHost");
+            userProfileRepository.save(profile);
+        }
+
+        // Ensure renter profile exists
+        if (userRepository.findByEmail("renter@example.com").isEmpty()) {
+            var user = new rent_a_space_api_clone.entity.User();
+            user.setEmail("renter@example.com");
+            user.setPassword("password");
+            user.setEnabled(true);
+            userRepository.save(user);
+            var profile = new rent_a_space_api_clone.entity.UserProfile();
+            profile.setUser(user);
+            profile.setRole(Role.RENTER);
+            profile.setEnabled(true);
+            profile.setNickname("TestRenter");
             userProfileRepository.save(profile);
         }
 
@@ -859,6 +893,77 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.unavailable_dates",
                         contains(holidays)))
                 .andExpect(jsonPath("$.data.unavailable_dates.length()").value(holidays.length));
+
+    }
+
+    @Test
+    public void unavailableHoursOfaSubspace_Success() throws Exception {
+        String createSpaceRequest = """
+                {
+                    "category": "meeting",
+                    "name": "MySpace 1",
+                    "description": "This is MySpace 1",
+                    "is_open_24": false,
+                    "opens_at": "09:00:00",
+                    "closes_at": "18:00:00",
+                    "timezone": "Asia/Seoul",
+                    "is_visible": true
+                }
+                """;
+
+        MvcResult mvcSpaceResult = mockMvc.perform(post("/v0/spaces")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSpaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String spaceResponse = mvcSpaceResult.getResponse().getContentAsString();
+        Object spaceIdObj = JsonPath.read(spaceResponse, "$.data.id");
+        String spaceId = spaceIdObj != null ? spaceIdObj.toString() : null;
+
+        String createSubspaceRequest = """
+                {"name" : "subspace 1"}
+                """;
+
+        MvcResult subspaceMvcResult = mockMvc.perform(post("/v0/spaces/{id}/subspaces", spaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createSubspaceRequest))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String subspaceResponse = subspaceMvcResult.getResponse().getContentAsString();
+        Object subspaceIdObj = JsonPath.read(subspaceResponse, "$.data.id");
+        String subspaceId = subspaceIdObj != null ? subspaceIdObj.toString() : null;
+
+        String createReservationRequest = """
+                {"subspace_id": %s,
+                "starts_at": "2026-03-04T15:00:00",
+                "ends_at": "2026-03-04T16:00:00",
+                "renter_name": "Mike",
+                "renter_phone": "01012345678",
+                "renter_email": "example@example.com",
+                "custom_request": "I need 2 chairs."}
+                """;
+
+        createReservationRequest = String.format(createReservationRequest, subspaceId);
+
+        mockMvc.perform(post("/v0/reservation")
+                        .with(user("renter@example.com").roles("RENTER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createReservationRequest))
+                .andExpect(status().isCreated());
+
+
+        mockMvc.perform(get("/v0/subspaces/{id}/unavailable-hours", subspaceId)
+                .with(user("renter@example.com").roles("RENTER"))
+                .param("date", "2026-03-04"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.unavailable_hours.length()").value(2))
+                .andExpect(jsonPath("$.data.unavailable_hours[0].start").value("18:00:00"))
+                .andExpect(jsonPath("$.data.unavailable_hours[0].end").value("09:00:00"))
+                .andExpect(jsonPath("$.data.unavailable_hours[1].start").value("15:00:00"))
+                .andExpect(jsonPath("$.data.unavailable_hours[1].end").value("16:00:00"));
 
     }
 

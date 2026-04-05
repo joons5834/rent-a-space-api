@@ -9,14 +9,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rent_a_space_api_clone.dto.*;
+import rent_a_space_api_clone.dto.UnavailableHoursResponse.TimeSpan;
+import rent_a_space_api_clone.dto.UnavailableHoursResponse.UnavailableHoursData;
 import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.exception.ResourceNotFoundException;
 import rent_a_space_api_clone.repository.*;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -41,6 +41,7 @@ public class SpaceService {
     );
     private final EntityManager entityManager;
     private final HolidayGeneratorService holidayGeneratorService;
+    private final ReservationRepository reservationRepository;
 
     @Transactional
     public Long createSpace(CreateSpaceRequest request) {
@@ -537,4 +538,45 @@ public class SpaceService {
         UnavailableDatesResponse.UnavailableDatesData unavailableDatesData = new UnavailableDatesResponse.UnavailableDatesData(holidayDaysInMonth);
         return new UnavailableDatesResponse(unavailableDatesData);
     }
+
+    public UnavailableHoursResponse getUnavailableHoursForSubspace(Long subspaceId, LocalDate localDate) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+                () -> new ResourceNotFoundException("No subspace with subspaceId : " + subspaceId)
+        );
+
+        List<TimeSpan> timeSpans = new ArrayList<>();
+
+        LocalTime closeStart = subspace.getSpace().getCloseStart();
+        LocalTime closeEnd = subspace.getSpace().getCloseEnd();
+        if (!closeStart.equals(closeEnd)) {
+            timeSpans.add(new TimeSpan(closeStart, closeEnd));
+        }
+
+        ZoneId timezone = subspace.getSpace().getTimezone();
+        ZonedDateTime searchStart = ZonedDateTime.of(localDate, LocalTime.of(0, 0), timezone);
+        ZonedDateTime searchEnd = ZonedDateTime.of(localDate.plusDays(1), LocalTime.of(0, 0), timezone);
+
+        List<Reservation> reservations = reservationRepository.findOverlappingReservations(subspaceId, searchStart, searchEnd);
+
+        for (Reservation reservation : reservations) {
+            LocalDateTime reservationStart = reservation.getStartsAt().withZoneSameInstant(timezone).toLocalDateTime();
+            LocalDateTime reservationEnd = reservation.getEndsAt().withZoneSameInstant(timezone).toLocalDateTime();
+
+            LocalTime unavailableStart = reservationStart.toLocalTime();
+            LocalTime unavailableEnd = reservationEnd.toLocalTime();
+            if (reservationStart.toLocalDate().isBefore(localDate)) {
+                unavailableStart = LocalTime.of(0, 0);
+            }
+            if (reservationEnd.toLocalDate().isAfter(localDate)) {
+                unavailableEnd = LocalTime.of(0, 0);
+            }
+
+            timeSpans.add(new TimeSpan(unavailableStart, unavailableEnd));
+        }
+
+        UnavailableHoursData unavailableHoursData = new UnavailableHoursData(timeSpans);
+
+        return new UnavailableHoursResponse(unavailableHoursData);
+    }
+
 }
