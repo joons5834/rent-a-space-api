@@ -539,6 +539,7 @@ public class SpaceService {
         return new UnavailableDatesResponse(unavailableDatesData);
     }
 
+    @Transactional(readOnly = true)
     public UnavailableHoursResponse getUnavailableHoursForSubspace(Long subspaceId, LocalDate localDate) {
         Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
                 () -> new ResourceNotFoundException("No subspace with subspaceId : " + subspaceId)
@@ -548,11 +549,19 @@ public class SpaceService {
 
         LocalTime closeStart = subspace.getSpace().getCloseStart();
         LocalTime closeEnd = subspace.getSpace().getCloseEnd();
+
+        if (closeStart == null || closeEnd == null) {
+            throw new IllegalStateException("Space closing time is not configured for subspaceId: " + subspaceId);
+        }
+
         if (!closeStart.equals(closeEnd)) {
             timeSpans.add(new TimeSpan(closeStart, closeEnd));
         }
 
         ZoneId timezone = subspace.getSpace().getTimezone();
+        if (timezone == null) {
+            throw new IllegalStateException("Space timezone is not configured for subspaceId: " + subspaceId);
+        }
         ZonedDateTime searchStart = ZonedDateTime.of(localDate, LocalTime.of(0, 0), timezone);
         ZonedDateTime searchEnd = ZonedDateTime.of(localDate.plusDays(1), LocalTime.of(0, 0), timezone);
 

@@ -88,7 +88,7 @@ public class SpaceControllerTest {
     static class TestConfig {
         @Bean
         @Primary
-        public Clock FakeClockConfig(){
+        public Clock fakeClockConfig(){
             Instant fixedInstant = Instant.parse("2026-03-01T10:00:00Z");
             return Clock.fixed(fixedInstant, ZoneId.of("UTC"));
         }
