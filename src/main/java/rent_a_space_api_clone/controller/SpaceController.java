@@ -13,6 +13,8 @@ import rent_a_space_api_clone.dto.*;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.service.SpaceService;
 
+import java.time.LocalDate;
+
 @RestController
 @Validated
 @RequiredArgsConstructor
@@ -83,5 +85,13 @@ public class SpaceController {
                                                                 @RequestParam @Min(1) @Max(12) int month) {
         UnavailableDatesResponse unavailableDatesResponse = spaceService.getHolidaysForSubspace(id, year, month);
         return ResponseEntity.ok(unavailableDatesResponse);
+    }
+
+    @GetMapping("/v0/subspaces/{id}/unavailable-hours")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UnavailableHoursResponse> getUnavailableHours(@PathVariable Long id,
+                                                                       @RequestParam LocalDate date) {
+        UnavailableHoursResponse response = spaceService.getUnavailableHoursForSubspace(id, date);
+        return ResponseEntity.ok(response);
     }
 }
