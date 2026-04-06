@@ -72,6 +72,17 @@ public class SpaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PatchMapping("/v0/subspaces/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSubspaceOwner(#id, authentication.name))")
+    public ResponseEntity<SubspaceResponse> updateSubspace(@PathVariable Long id, @Valid @RequestBody UpdateSubspaceRequest request) {
+        if (request.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        spaceService.updateSubspace(id, request);
+        SubspaceResponse response = spaceService.buildSubspaceResponse(id);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/v0/subspaces/{id}")
     public ResponseEntity<SubspacePublicResponse> getSubspacePublicView(@PathVariable Long id) {
         SubspacePublicResponse response = spaceService.buildPublicSubspaceResponse(id);

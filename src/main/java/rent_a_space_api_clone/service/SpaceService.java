@@ -386,6 +386,14 @@ public class SpaceService {
                 .orElse(false);
     }
 
+    @Transactional(readOnly = true)
+    public boolean isSubspaceOwner(Long id, String username) {
+        return subspaceRepository.findById(id)
+                .map(subspace -> subspace.getSpace().getHostProfile()
+                        .getUser().getEmail().equals(username))
+                .orElse(false);
+    }
+
     @Transactional
     public Long createSubspace(Long id, CreateSubspaceRequest request) {
         Subspace subspace = new Subspace();
@@ -411,12 +419,68 @@ public class SpaceService {
         return savedSubspace.getId();
     }
 
+    @Transactional
+    public void updateSubspace(Long subspaceId, UpdateSubspaceRequest request) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+                () -> new ResourceNotFoundException("Subspace not found with id: " + subspaceId)
+        );
+
+
+        if (request.name() != null) {
+            subspace.setName(request.name());
+        }
+
+        if (request.description() != null) {
+            subspace.setDescription(request.description());
+        }
+
+        if (request.minHours() != null) {
+            subspace.setMinHours(request.minHours());
+        }
+
+        if (request.maxHours() != null) {
+            subspace.setMaxHours(request.maxHours());
+        }
+
+        if (request.isVisible() != null) {
+            subspace.setIsVisible(request.isVisible());
+        }
+
+        if (request.mainImageUrl() != null || request.imagesUrls() != null) {
+            List<String> imageUrls = new ArrayList<>();
+            if (request.mainImageUrl() == null) {
+                String mainImageUrl = subspaceImageRepository.findMainImageUrlOfSubspace(subspaceId)
+                        .orElse("");
+                imageUrls.add(mainImageUrl);
+                imageUrls.addAll(request.imagesUrls());
+            } else if (request.imagesUrls() == null) {
+                imageUrls.add(request.mainImageUrl());
+                List<String> subImagesUrls = subspaceImageRepository.findSubImagesUrlsOfSubspace(subspaceId)
+                        .orElse(List.of());
+                imageUrls.addAll(subImagesUrls);
+            } else {
+                imageUrls.add(request.mainImageUrl());
+                imageUrls.addAll(request.imagesUrls());
+            }
+            subspaceImageRepository.deleteBySubspace(subspace);
+            List<SubspaceImage> subspaceImages = createSubspaceImages(imageUrls, subspace);
+            subspaceImageRepository.saveAll(subspaceImages);
+        }
+
+        subspaceRepository.save(subspace);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+
     private List<SubspaceImage> createSubspaceImages(List<String> urls,
                                                      Subspace subspace) {
         List<SubspaceImage> subspaceImages = new ArrayList<>();
         int order = 0;
         for (String url : urls) {
-            if (url == null || url.isBlank()) { // when a (main) image is missing
+            if (url == null || url.isBlank()) {
+                // when a (main) image is missing
+                // order == 0 is reserved for the main image
                 order++;
                 continue;
             }
@@ -451,6 +515,7 @@ public class SpaceService {
                     .filter(
                             subspaceImage -> subspaceImage.getOrderSeq() > 0
                     )
+                    .sorted(Comparator.comparing(SubspaceImage::getOrderSeq))
                     .map((image) -> image.getImage().getFullUrl())
                     .toList();
         }
