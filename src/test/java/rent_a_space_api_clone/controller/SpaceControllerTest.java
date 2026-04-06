@@ -23,10 +23,7 @@ import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.CreateSubspaceRequest;
 import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.dto.UpdateSubspaceRequest;
-import rent_a_space_api_clone.entity.Category;
-import rent_a_space_api_clone.entity.Space;
-import rent_a_space_api_clone.entity.SpaceImage;
-import rent_a_space_api_clone.entity.Subspace;
+import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
@@ -714,6 +711,46 @@ public class SpaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.images_urls.length()").value(2))
                 .andExpect(jsonPath("$.data.images_urls", contains("https://example.com/image2.png", "https://example.com/image3.png")))
+                .andExpect(jsonPath("$.data.name").value("Subspace 1"))
+                .andExpect(jsonPath("$.data.description").value("Initial Desc."));
+    }
+
+    @Test
+    void updateSubspace_PartialMainImageUpdate_Success() throws Exception {
+
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Subspace 1");
+        subspace.setDescription("Initial Desc.");
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        for (int i = 1 ; i <= 2; i++) {
+            var image = new Image();
+            image.setFullUrl("https://example.com/initial" + i + ".png");
+            imageRepository.save(image);
+
+            var spacesImage = new SubspaceImage();
+            spacesImage.setSubspace(subspace);
+            spacesImage.setImage(image);
+            spacesImage.setOrderSeq(i);
+            subspaceImageRepository.save(spacesImage);
+        }
+
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("main_image_url", "https://example.com/image1.png");
+
+        mockMvc.perform(patch("/v0/subspaces/{id}", subspaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.main_image_url").value("https://example.com/image1.png"))
+                .andExpect(jsonPath("$.data.images_urls.length()").value(2))
+                .andExpect(jsonPath("$.data.images_urls", contains("https://example.com/initial1.png", "https://example.com/initial2.png")))
                 .andExpect(jsonPath("$.data.name").value("Subspace 1"))
                 .andExpect(jsonPath("$.data.description").value("Initial Desc."));
     }
