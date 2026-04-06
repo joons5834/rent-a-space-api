@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import rent_a_space_api_clone.dto.CreateSpaceRequest;
 import rent_a_space_api_clone.dto.CreateSubspaceRequest;
 import rent_a_space_api_clone.dto.UpdateSpaceRequest;
+import rent_a_space_api_clone.dto.UpdateSubspaceRequest;
 import rent_a_space_api_clone.entity.Category;
 import rent_a_space_api_clone.entity.Space;
 import rent_a_space_api_clone.entity.SpaceImage;
@@ -652,6 +653,69 @@ public class SpaceControllerTest {
                         .content(jsonMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Valid Name"));
+    }
+    
+    @Test
+    void updateSubspace_FullRequest_success() throws Exception {
+        
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Initial Name");
+        subspace.setDescription("Initial Desc");
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        UpdateSubspaceRequest updateSubspaceRequest = new UpdateSubspaceRequest(
+                "Updated Subspace",
+                "Updated description",
+                "https://example.com/image1.png",
+                List.of("https://example.com/image2.png", "https://example.com/image3.png"),
+                2, 10, true);
+
+        mockMvc.perform(patch("/v0/subspaces/{id}", subspaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(updateSubspaceRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("Updated Subspace"))
+                .andExpect(jsonPath("$.data.description").value("Updated description"))
+                .andExpect(jsonPath("$.data.main_image_url").value("https://example.com/image1.png"))
+                .andExpect(jsonPath("$.data.images_urls.length()").value(2))
+                .andExpect(jsonPath("$.data.images_urls", contains("https://example.com/image2.png", "https://example.com/image3.png")))
+                .andExpect(jsonPath("$.data.min_hours").value(2))
+                .andExpect(jsonPath("$.data.max_hours").value(10))
+                .andExpect(jsonPath("$.data.is_visible").value(true));
+    }
+
+    @Test
+    void updateSubspace_PartialUpdate_Success() throws Exception {
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Subspace 1");
+        subspace.setDescription("Initial Desc.");
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        JSONObject updateRequest = new JSONObject();
+        updateRequest.put("images_urls", new JSONArray(
+                List.of("https://example.com/image2.png", "https://example.com/image3.png")
+        ));
+
+        mockMvc.perform(patch("/v0/subspaces/{id}", subspaceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.images_urls.length()").value(2))
+                .andExpect(jsonPath("$.data.images_urls", contains("https://example.com/image2.png", "https://example.com/image3.png")))
+                .andExpect(jsonPath("$.data.name").value("Subspace 1"))
+                .andExpect(jsonPath("$.data.description").value("Initial Desc."));
     }
 
     @Test
