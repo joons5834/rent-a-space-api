@@ -416,6 +416,10 @@ public class SpaceService {
         List<SubspaceImage> subspaceImages = new ArrayList<>();
         int order = 0;
         for (String url : urls) {
+            if (url == null || url.isBlank()) { // when a (main) image is missing
+                order++;
+                continue;
+            }
             SubspaceImage subspaceImage = new SubspaceImage();
             subspaceImage.setSubspace(subspace);
             Image image = imageRepository.findByFullUrl(url).orElseThrow();
@@ -435,11 +439,18 @@ public class SpaceService {
         String mainImageUrl = null;
         List<String> imageUrls = null;
         if (subspacesImages != null && !subspacesImages.isEmpty()) {
-            mainImageUrl = subspacesImages
-                    .get(0).getImage().getFullUrl();
+            SubspaceImage mainImage = subspacesImages
+                    .stream().filter(
+                            subspaceImage -> subspaceImage.getOrderSeq() == 0)
+                    .findFirst()
+                    .orElse(null);
+            mainImageUrl = mainImage == null ? null :
+                    mainImage.getImage().getFullUrl();
             imageUrls = subspacesImages
                     .stream()
-                    .skip(1)
+                    .filter(
+                            subspaceImage -> subspaceImage.getOrderSeq() > 0
+                    )
                     .map((image) -> image.getImage().getFullUrl())
                     .toList();
         }
