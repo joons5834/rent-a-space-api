@@ -83,6 +83,13 @@ public class SpaceController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/v0/host/subspaces/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSubspaceOwner(#id, authentication.name))")
+    public ResponseEntity<SubspaceResponse> getSubspace(@PathVariable Long id) {
+        SubspaceResponse response = spaceService.buildSubspaceResponse(id);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/v0/subspaces/{id}")
     public ResponseEntity<SubspacePublicResponse> getSubspacePublicView(@PathVariable Long id) {
         SubspacePublicResponse response = spaceService.buildPublicSubspaceResponse(id);
