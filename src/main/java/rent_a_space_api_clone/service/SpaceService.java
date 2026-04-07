@@ -495,7 +495,8 @@ public class SpaceService {
     }
 
     public SubspaceResponse buildSubspaceResponse(Long subspaceId) {
-        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow();
+        Subspace subspace = subspaceRepository.findById(subspaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subspace not found with id: " + subspaceId));
         Long id = subspace.getId();
         String name = subspace.getName();
         String description = subspace.getDescription();
