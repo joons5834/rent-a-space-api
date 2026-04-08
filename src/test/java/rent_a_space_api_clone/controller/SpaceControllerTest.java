@@ -1102,6 +1102,12 @@ public class SpaceControllerTest {
         Assertions.assertThrows(NoSuchElementException.class, () ->
                 subspaceRepository.findById(subspaceId).orElseThrow());
 
+        Integer softDeletedRows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subspaces WHERE id = ? AND deleted_at IS NOT NULL",
+                Integer.class,
+                subspaceId);
+        assertThat(softDeletedRows).isEqualTo(1);
+
         mockMvc.perform(get("/v0/spaces/{id}", spaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.subspaces").isEmpty());

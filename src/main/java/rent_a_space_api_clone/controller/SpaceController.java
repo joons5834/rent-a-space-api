@@ -114,7 +114,7 @@ public class SpaceController {
     }
 
     @DeleteMapping("/v0/subspaces/{id}")
-    @PreAuthorize("hasRole('admin') or (hasRole('HOST') and @spaceService.isSubspaceOwner(#id, authentication.name))")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSubspaceOwner(#id, authentication.name))")
     public ResponseEntity<Void> softDeleteASubspace(@PathVariable Long id) {
         spaceService.softDeleteASubspace(id);
         return ResponseEntity.ok().build();
