@@ -305,6 +305,8 @@ public class SpaceService {
                 .map(spaceImg -> spaceImg.getImage().getFullUrl())
                 .toList();
         List<SpacePublicResponse.SubspaceBrief> subspaceBriefs = space.getSubspaces().stream()
+                .filter(subspace -> subspace.getDeletedAt() == null
+                && Boolean.TRUE.equals(subspace.getIsVisible()))
                 .sorted(Comparator.comparing(Subspace::getId))
                 .map(subspace -> new SpacePublicResponse.SubspaceBrief(
                         subspace.getId(), subspace.getName()
@@ -665,4 +667,14 @@ public class SpaceService {
         return new UnavailableHoursResponse(unavailableHoursData);
     }
 
+    @Transactional
+    public void softDeleteASubspace(Long subspaceId) {
+        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+                () -> new ResourceNotFoundException("No subspace found of id: " + subspaceId)
+        );
+        subspace.setDeletedAt(OffsetDateTime.now());
+        subspaceRepository.save(subspace);
+        entityManager.flush();
+        entityManager.clear();
+    }
 }

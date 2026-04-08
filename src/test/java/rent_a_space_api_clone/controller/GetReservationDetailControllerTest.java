@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,8 @@ public class GetReservationDetailControllerTest {
     private ReservationRepository reservationRepository;
 
     private Reservation testReservation;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setUp() {
@@ -130,12 +133,12 @@ public class GetReservationDetailControllerTest {
 
     @AfterEach
     void tearDown() {
-        reservationRepository.deleteAll();
-        subspaceRepository.deleteAll();
-        spaceRepository.deleteAll();
-        userProfileRepository.deleteAll();
-        userRepository.deleteAll();
-        categoryRepository.deleteAll();
+        jdbcTemplate.execute("DELETE FROM reservations");
+        jdbcTemplate.execute("DELETE FROM subspaces");
+        jdbcTemplate.execute("DELETE FROM spaces");
+        jdbcTemplate.execute("DELETE FROM users_profiles");
+        jdbcTemplate.execute("DELETE FROM users");
+        jdbcTemplate.execute("DELETE FROM categories");
     }
 
     @Test
