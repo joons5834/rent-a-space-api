@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
@@ -82,6 +83,8 @@ public class CreateReservationControllerTest {
 
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @TestConfiguration
     static class TestConfig {
@@ -157,14 +160,14 @@ public class CreateReservationControllerTest {
 
     @AfterEach
     void tearDown() {
-        reservationRepository.deleteAll();
-        holidayOverrideRepository.deleteAll();
-        holidayRuleRepository.deleteAll();
-        subspaceRepository.deleteAll();
-        spaceRepository.deleteAll();
-        userProfileRepository.deleteAll();
-        userRepository.deleteAll();
-        categoryRepository.deleteAll();
+        jdbcTemplate.execute("DELETE FROM reservations");
+        jdbcTemplate.execute("DELETE FROM holiday_override");
+        jdbcTemplate.execute("DELETE FROM holiday_rule");
+        jdbcTemplate.execute("DELETE FROM subspaces");
+        jdbcTemplate.execute("DELETE FROM spaces");
+        jdbcTemplate.execute("DELETE FROM users_profiles");
+        jdbcTemplate.execute("DELETE FROM users");
+        jdbcTemplate.execute("DELETE FROM categories");
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +35,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -81,6 +84,8 @@ public class SpaceControllerTest {
 
     @Autowired
     private ReservationRepository reservationRepository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @TestConfiguration
     static class TestConfig {
@@ -96,15 +101,17 @@ public class SpaceControllerTest {
     void tearDown() {
         // Delete in correct order to respect foreign key constraints
         // Child entities first, then parents
-        subspaceImageRepository.deleteAll();
-        spaceImageRepository.deleteAll();
-        reservationRepository.deleteAll();
-        subspaceRepository.deleteAll();
-        spaceRepository.deleteAll();
-        categoryRepository.deleteAll();
-        imageRepository.deleteAll();
-        userProfileRepository.deleteAll();
-        userRepository.deleteAll();
+        jdbcTemplate.execute("DELETE FROM subspaces_images");
+        jdbcTemplate.execute("DELETE FROM spaces_images");
+        jdbcTemplate.execute("DELETE FROM reservations");
+        jdbcTemplate.execute("DELETE FROM subspaces");
+        jdbcTemplate.execute("DELETE FROM holiday_override");
+        jdbcTemplate.execute("DELETE FROM holiday_rule");
+        jdbcTemplate.execute("DELETE FROM spaces");
+        jdbcTemplate.execute("DELETE FROM categories");
+        jdbcTemplate.execute("DELETE FROM images");
+        jdbcTemplate.execute("DELETE FROM users_profiles");
+        jdbcTemplate.execute("DELETE FROM users");
     }
 
     @BeforeEach
@@ -780,7 +787,8 @@ public class SpaceControllerTest {
 
         String createSubspaceRequest = """
                 {
-                    "name" : "subspace 1"
+                    "name" : "subspace 1",
+                    "is_visible" : true
                 }
                 """;
 
@@ -1065,6 +1073,77 @@ public class SpaceControllerTest {
                 .andExpect(jsonPath("$.data.unavailable_hours[0].end").value("09:00:00"))
                 .andExpect(jsonPath("$.data.unavailable_hours[1].start").value("15:00:00"))
                 .andExpect(jsonPath("$.data.unavailable_hours[1].end").value("16:00:00"));
+
+    }
+
+    @Test
+    public void deleteASubspace_Success() throws Exception {
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Subspace 1");
+        subspace.setDescription("Subspace1 Desc.");
+        subspace.setIsVisible(true);
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.subspaces").isNotEmpty());
+
+        mockMvc.perform(delete("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isOk());
+
+
+        Assertions.assertThrows(NoSuchElementException.class, () ->
+                subspaceRepository.findById(subspaceId).orElseThrow());
+
+        Integer softDeletedRows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subspaces WHERE id = ? AND deleted_at IS NOT NULL",
+                Integer.class,
+                subspaceId);
+        assertThat(softDeletedRows).isEqualTo(1);
+
+        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.subspaces").isEmpty());
+
+        mockMvc.perform(get("/v0/host/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/v0/subspaces/{id}/unavailable-dates", subspaceId)
+                        .param("year", "2026")
+                        .param("month", "3")
+                        .with(user("renter@example.com").roles("RENTER")))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/v0/subspaces/{id}/unavailable-hours", subspaceId)
+                        .param("date", "2026-03-04")
+                        .with(user("renter@example.com").roles("RENTER")))
+                .andExpect(status().isNotFound());
+
+        String updateSubspaceRequest = """
+                {"name": "updated Subspace"}
+                """;
+
+        mockMvc.perform(patch("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateSubspaceRequest))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isForbidden());
 
     }
 

@@ -112,4 +112,11 @@ public class SpaceController {
         UnavailableHoursResponse response = spaceService.getUnavailableHoursForSubspace(id, date);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/v0/subspaces/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('HOST') and @spaceService.isSubspaceOwner(#id, authentication.name))")
+    public ResponseEntity<Void> softDeleteASubspace(@PathVariable Long id) {
+        spaceService.softDeleteASubspace(id);
+        return ResponseEntity.ok().build();
+    }
 }

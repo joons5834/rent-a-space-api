@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -13,6 +16,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @ToString(exclude = "images")
+@SQLDelete(sql = "UPDATE subspaces SET deleted_at = now() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Subspace {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
