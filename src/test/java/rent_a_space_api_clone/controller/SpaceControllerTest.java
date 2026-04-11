@@ -26,14 +26,12 @@ import rent_a_space_api_clone.dto.CreateSubspaceRequest;
 import rent_a_space_api_clone.dto.UpdateSpaceRequest;
 import rent_a_space_api_clone.dto.UpdateSubspaceRequest;
 import rent_a_space_api_clone.entity.*;
+import rent_a_space_api_clone.enums.ReservationStatus;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -1090,9 +1088,24 @@ public class SpaceControllerTest {
         subspace.setSpace(space);
         Long subspaceId = subspaceRepository.save(subspace).getId();
 
+        Reservation reservation = new Reservation();
+        reservation.setSubspace(subspace);
+        reservation.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 15, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 16, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setTimezone(ZoneId.of("Asia/Seoul"));
+        reservation.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservationRepository.save(reservation);
+
         mockMvc.perform(get("/v0/spaces/{id}", spaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.subspaces").isNotEmpty());
+
+        mockMvc.perform(get("/v0/renter/reservations")
+                        .with(user("renter@example.com").roles("RENTER")))
+                .andExpect(jsonPath("$.reservations[0].subspace_name").value("Subspace 1"))
+                .andExpect(jsonPath("$.reservations[0].space_name").value("Space 1"))
+                .andExpect(jsonPath("$.reservations[0].status").value("CONFIRMED"));
 
         mockMvc.perform(delete("/v0/subspaces/{id}", subspaceId)
                         .with(user("host@example.com").roles("HOST")))
@@ -1111,6 +1124,13 @@ public class SpaceControllerTest {
         mockMvc.perform(get("/v0/spaces/{id}", spaceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.subspaces").isEmpty());
+
+        mockMvc.perform(get("/v0/renter/reservations")
+                        .with(user("renter@example.com").roles("RENTER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations[0].subspace_name").isEmpty())
+                .andExpect(jsonPath("$.reservations[0].space_name").isEmpty())
+                .andExpect(jsonPath("$.reservations[0].status").value("CONFIRMED"));
 
         mockMvc.perform(get("/v0/host/subspaces/{id}", subspaceId)
                         .with(user("host@example.com").roles("HOST")))

@@ -102,8 +102,8 @@ public class ReservationService {
                         r.getEndsAt().withZoneSameInstant(r.getTimezone()).toLocalDateTime(),
                         r.getStatus(),
                         r.getRenterName(),
-                        r.getSubspace().getName(),
-                        r.getSubspace().getSpace().getName()
+                        r.getSubspace() != null ? r.getSubspace().getName() : null,
+                        r.getSubspace() != null ? r.getSubspace().getSpace().getName() : null
                 ))
                 .toList();
 

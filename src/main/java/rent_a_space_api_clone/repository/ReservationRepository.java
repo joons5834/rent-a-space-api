@@ -26,8 +26,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     Long findHostProfileIdById(@Param("id") Long reservationId);
 
     @Query("SELECT r FROM Reservation r " +
-            "JOIN FETCH r.subspace ss " +
-            "JOIN FETCH ss.space s " +
+            "LEFT JOIN FETCH r.subspace ss " +
+            "LEFT JOIN FETCH ss.space s " +
             "WHERE (cast(:hostProfileId as long) IS NULL OR s.hostProfile.id = :hostProfileId) " +
             "AND (cast(:renterProfileId as long) IS NULL OR r.renterProfile.id = :renterProfileId) " +
             "AND (cast(:status as string) IS NULL OR r.status = :status) " +
@@ -41,8 +41,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT r FROM Reservation r " +
-            "JOIN FETCH r.subspace ss " +
-            "JOIN FETCH ss.space s " +
+            "LEFT JOIN FETCH r.subspace ss " +
+            "LEFT JOIN FETCH ss.space s " +
             "WHERE (cast(:hostProfileId as long) IS NULL OR s.hostProfile.id = :hostProfileId) " +
             "AND (cast(:renterProfileId as long) IS NULL OR r.renterProfile.id = :renterProfileId) " +
             "AND (cast(:status as string) IS NULL OR r.status = :status) " +
