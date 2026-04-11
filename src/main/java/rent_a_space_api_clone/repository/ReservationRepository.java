@@ -1,11 +1,14 @@
 package rent_a_space_api_clone.repository;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import rent_a_space_api_clone.entity.Reservation;
+import rent_a_space_api_clone.entity.Subspace;
 import rent_a_space_api_clone.enums.ReservationStatus;
 
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -55,4 +58,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("cursorStartsAt") ZonedDateTime cursorStartsAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT r from Reservation r " +
+            "JOIN r.subspace ss " +
+            "WHERE ss.id = :subspaceId " +
+            "AND r.endsAt > :now "
+            )
+    List<Reservation> findCurrentReservations(@Param("subspaceId") Long subspaceId,
+                                     @Param("now") ZonedDateTime now,
+                                     Pageable pageable);
 }

@@ -42,6 +42,7 @@ public class SpaceService {
     private final EntityManager entityManager;
     private final HolidayGeneratorService holidayGeneratorService;
     private final ReservationRepository reservationRepository;
+    private final Clock clock;
 
     @Transactional
     public Long createSpace(CreateSpaceRequest request) {
@@ -672,6 +673,15 @@ public class SpaceService {
         Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
                 () -> new ResourceNotFoundException("No subspace found of id: " + subspaceId)
         );
+        if (subspace.getIsVisible()) {
+            throw new IllegalStateException("The subspace is currently visible to the public.");
+        }
+
+        List<Reservation> currentReservations = reservationRepository.findCurrentReservations(subspaceId, ZonedDateTime.now(clock), PageRequest.of(0, 1));
+        if (!currentReservations.isEmpty()) {
+            throw new IllegalStateException("The subspace has ongoing or future reservations");
+        }
+
         subspace.setDeletedAt(OffsetDateTime.now());
         subspaceRepository.save(subspace);
         entityManager.flush();

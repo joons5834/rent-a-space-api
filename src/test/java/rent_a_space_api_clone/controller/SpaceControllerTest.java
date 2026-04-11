@@ -1084,7 +1084,7 @@ public class SpaceControllerTest {
         Subspace subspace = new Subspace();
         subspace.setName("Subspace 1");
         subspace.setDescription("Subspace1 Desc.");
-        subspace.setIsVisible(true);
+        subspace.setIsVisible(false);
         subspace.setSpace(space);
         Long subspaceId = subspaceRepository.save(subspace).getId();
 
@@ -1097,9 +1097,6 @@ public class SpaceControllerTest {
         reservation.setStatus(ReservationStatus.CONFIRMED);
         reservationRepository.save(reservation);
 
-        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.subspaces").isNotEmpty());
 
         mockMvc.perform(get("/v0/renter/reservations")
                         .with(user("renter@example.com").roles("RENTER")))
@@ -1111,7 +1108,6 @@ public class SpaceControllerTest {
                         .with(user("host@example.com").roles("HOST")))
                 .andExpect(status().isOk());
 
-
         Assertions.assertThrows(NoSuchElementException.class, () ->
                 subspaceRepository.findById(subspaceId).orElseThrow());
 
@@ -1120,10 +1116,6 @@ public class SpaceControllerTest {
                 Integer.class,
                 subspaceId);
         assertThat(softDeletedRows).isEqualTo(1);
-
-        mockMvc.perform(get("/v0/spaces/{id}", spaceId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.subspaces").isEmpty());
 
         mockMvc.perform(get("/v0/renter/reservations")
                         .with(user("renter@example.com").roles("RENTER")))
@@ -1165,6 +1157,68 @@ public class SpaceControllerTest {
                         .with(user("host@example.com").roles("HOST")))
                 .andExpect(status().isForbidden());
 
+    }
+
+    @Test
+    public void deleteAVisibleSpace_Fail() throws Exception {
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Subspace 1");
+        subspace.setDescription("Subspace1 Desc.");
+        subspace.setIsVisible(true);
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        Reservation reservation = new Reservation();
+        reservation.setSubspace(subspace);
+        reservation.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 15, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 16, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setTimezone(ZoneId.of("Asia/Seoul"));
+        reservation.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservationRepository.save(reservation);
+
+        mockMvc.perform(delete("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isConflict());
+
+        Assertions.assertDoesNotThrow(() ->
+                subspaceRepository.findById(subspaceId).orElseThrow());
+    }
+
+    @Test
+    public void deleteASubspaceWithReservations_Fail() throws Exception {
+        Space space = new Space();
+        space.setName("Space 1");
+        space.setHostProfile(userProfileRepository.findByUserEmail("host@example.com"));
+        Long spaceId = spaceRepository.save(space).getId();
+
+        Subspace subspace = new Subspace();
+        subspace.setName("Subspace 1");
+        subspace.setDescription("Subspace1 Desc.");
+        subspace.setIsVisible(false);
+        subspace.setSpace(space);
+        Long subspaceId = subspaceRepository.save(subspace).getId();
+
+        Reservation reservation = new Reservation();
+        reservation.setSubspace(subspace);
+        reservation.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 15, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 1, 20, 0), ZoneId.of("Asia/Seoul")));
+        reservation.setTimezone(ZoneId.of("Asia/Seoul"));
+        reservation.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservationRepository.save(reservation);
+
+        mockMvc.perform(delete("/v0/subspaces/{id}", subspaceId)
+                        .with(user("host@example.com").roles("HOST")))
+                .andExpect(status().isConflict());
+
+        Assertions.assertDoesNotThrow(() ->
+                subspaceRepository.findById(subspaceId).orElseThrow());
     }
 
 }
