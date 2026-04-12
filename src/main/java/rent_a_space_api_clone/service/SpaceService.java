@@ -673,7 +673,7 @@ public class SpaceService {
         Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
                 () -> new ResourceNotFoundException("No subspace found of id: " + subspaceId)
         );
-        if (subspace.getIsVisible()) {
+        if (Boolean.TRUE.equals(subspace.getIsVisible())) {
             throw new IllegalStateException("The subspace is currently visible to the public.");
         }
 
@@ -682,7 +682,7 @@ public class SpaceService {
             throw new IllegalStateException("The subspace has ongoing or future reservations");
         }
 
-        subspace.setDeletedAt(OffsetDateTime.now());
+        subspace.setDeletedAt(OffsetDateTime.now(clock));
         subspaceRepository.save(subspace);
         entityManager.flush();
         entityManager.clear();

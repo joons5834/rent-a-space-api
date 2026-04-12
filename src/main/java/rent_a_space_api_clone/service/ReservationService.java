@@ -103,7 +103,8 @@ public class ReservationService {
                         r.getStatus(),
                         r.getRenterName(),
                         r.getSubspace() != null ? r.getSubspace().getName() : null,
-                        r.getSubspace() != null ? r.getSubspace().getSpace().getName() : null
+                        (r.getSubspace() != null && r.getSubspace().getSpace() != null)
+                                ? r.getSubspace().getSpace().getName() : null
                 ))
                 .toList();
 
