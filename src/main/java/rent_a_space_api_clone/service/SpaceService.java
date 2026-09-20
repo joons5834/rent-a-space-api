@@ -670,7 +670,7 @@ public class SpaceService {
 
     @Transactional
     public void softDeleteASubspace(Long subspaceId) {
-        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+        Subspace subspace = subspaceRepository.findByIdForUpdate(subspaceId).orElseThrow(
                 () -> new ResourceNotFoundException("No subspace found of id: " + subspaceId)
         );
         if (Boolean.TRUE.equals(subspace.getIsVisible())) {
