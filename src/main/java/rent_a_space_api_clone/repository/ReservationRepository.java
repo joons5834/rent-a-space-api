@@ -1,5 +1,6 @@
 package rent_a_space_api_clone.repository;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,8 +27,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     Long findHostProfileIdById(@Param("id") Long reservationId);
 
     @Query("SELECT r FROM Reservation r " +
-            "JOIN FETCH r.subspace ss " +
-            "JOIN FETCH ss.space s " +
+            "LEFT JOIN FETCH r.subspace ss " +
+            "LEFT JOIN FETCH ss.space s " +
             "WHERE (cast(:hostProfileId as long) IS NULL OR s.hostProfile.id = :hostProfileId) " +
             "AND (cast(:renterProfileId as long) IS NULL OR r.renterProfile.id = :renterProfileId) " +
             "AND (cast(:status as string) IS NULL OR r.status = :status) " +
@@ -41,8 +42,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT r FROM Reservation r " +
-            "JOIN FETCH r.subspace ss " +
-            "JOIN FETCH ss.space s " +
+            "LEFT JOIN FETCH r.subspace ss " +
+            "LEFT JOIN FETCH ss.space s " +
             "WHERE (cast(:hostProfileId as long) IS NULL OR s.hostProfile.id = :hostProfileId) " +
             "AND (cast(:renterProfileId as long) IS NULL OR r.renterProfile.id = :renterProfileId) " +
             "AND (cast(:status as string) IS NULL OR r.status = :status) " +
@@ -55,4 +56,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("cursorStartsAt") ZonedDateTime cursorStartsAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Reservation r " +
+            "JOIN r.subspace ss " +
+            "WHERE ss.id = :subspaceId " +
+            "AND r.status != 'CANCELLED' " +
+            "AND r.endsAt > :now")
+    boolean existsCurrentReservations(@Param("subspaceId") Long subspaceId,
+                                      @Param("now") ZonedDateTime now);
 }
