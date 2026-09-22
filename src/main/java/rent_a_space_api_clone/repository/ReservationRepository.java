@@ -57,13 +57,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable);
 
-    @Query("SELECT r from Reservation r " +
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM Reservation r " +
             "JOIN r.subspace ss " +
             "WHERE ss.id = :subspaceId " +
             "AND r.status != 'CANCELLED' " +
-            "AND r.endsAt > :now "
-            )
-    List<Reservation> findCurrentReservations(@Param("subspaceId") Long subspaceId,
-                                     @Param("now") ZonedDateTime now,
-                                     Pageable pageable);
+            "AND r.endsAt > :now")
+    boolean existsCurrentReservations(@Param("subspaceId") Long subspaceId,
+                                      @Param("now") ZonedDateTime now);
 }

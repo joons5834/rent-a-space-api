@@ -677,8 +677,7 @@ public class SpaceService {
             throw new IllegalStateException("The subspace is currently visible to the public.");
         }
 
-        List<Reservation> currentReservations = reservationRepository.findCurrentReservations(subspaceId, ZonedDateTime.now(clock), PageRequest.of(0, 1));
-        if (!currentReservations.isEmpty()) {
+        if (reservationRepository.existsCurrentReservations(subspaceId, ZonedDateTime.now(clock))) {
             throw new IllegalStateException("The subspace has ongoing or future reservations");
         }
 
