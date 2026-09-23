@@ -19,6 +19,18 @@ import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
 import tools.jackson.databind.json.JsonMapper;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import rent_a_space_api_clone.service.ReservationService;
+
 
 import java.time.*;
 
@@ -67,6 +79,9 @@ public class CancelReservationControllerTest {
 
     @Autowired
     private HolidayOverrideRepository holidayOverrideRepository;
+
+    @Autowired
+    private ReservationService reservationService;
 
     @Autowired
     private EntityManager entityManager;
@@ -268,6 +283,56 @@ public class CancelReservationControllerTest {
         assertThat(reservation.getCancelledByProfile().getId())
                 .isEqualTo(adminProfileId);
     }
+
+    @Test
+    void concurrentCancel_shouldSucceedOnlyOnce() throws Exception {
+        int threads = 10;
+
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger succeeded = new AtomicInteger();
+        AtomicInteger rejected = new AtomicInteger();
+        AtomicInteger unexpected = new AtomicInteger();
+
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(executor.submit(() -> {
+                try {
+                    SecurityContextHolder.getContext().setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    "renter@example.com", null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_RENTER"))));
+                    ready.countDown();
+                    start.await();
+                    try {
+                        reservationService.cancelReservation(
+                                reservationId,
+                                new CancelReservationRequest(Role.RENTER, "concurrent"));
+                        succeeded.incrementAndGet();
+                    } catch (IllegalStateException e) {
+                        rejected.incrementAndGet();
+                    } catch (Exception e) {
+                        unexpected.incrementAndGet();
+                        e.printStackTrace();
+                    }
+                    return null;
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
+            }));
+        }
+
+        ready.await();
+        start.countDown();
+        for (Future<?> f : futures) f.get();
+        executor.shutdown();
+
+        System.out.println("succeeded=" + succeeded.get() + " rejected=" + rejected.get());
+        assertThat(succeeded.get()).isEqualTo(1);
+        assertThat(unexpected.get()).isZero();
+    }
+
 
     @Test
     @DisplayName("Renters who did not made the reservation cannot cancel the reservation")

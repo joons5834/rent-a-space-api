@@ -1,7 +1,9 @@
 package rent_a_space_api_clone.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import rent_a_space_api_clone.entity.Reservation;
@@ -9,6 +11,7 @@ import rent_a_space_api_clone.enums.ReservationStatus;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
@@ -64,4 +67,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             "AND r.endsAt > :now")
     boolean existsCurrentReservations(@Param("subspaceId") Long subspaceId,
                                       @Param("now") ZonedDateTime now);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reservation r WHERE r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
+
 }

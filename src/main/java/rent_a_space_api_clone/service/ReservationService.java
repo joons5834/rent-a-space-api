@@ -274,7 +274,7 @@ public class ReservationService {
     public void cancelReservation(Long id, @Valid CancelReservationRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
 
-        Reservation reservation = reservationRepository.findById(id).orElseThrow();
+        Reservation reservation = reservationRepository.findByIdForUpdate(id).orElseThrow();
 
         if (CANCELLED.equals(reservation.getStatus())) {
             throw new IllegalStateException("Reservation already cancelled");
