@@ -293,6 +293,7 @@ public class CancelReservationControllerTest {
         CountDownLatch start = new CountDownLatch(1);
         AtomicInteger succeeded = new AtomicInteger();
         AtomicInteger rejected = new AtomicInteger();
+        AtomicInteger unexpected = new AtomicInteger();
 
         List<Future<?>> futures = new ArrayList<>();
         for (int i = 0; i < threads; i++) {
@@ -309,8 +310,11 @@ public class CancelReservationControllerTest {
                                 reservationId,
                                 new CancelReservationRequest(Role.RENTER, "concurrent"));
                         succeeded.incrementAndGet();
-                    } catch (Exception e) {
+                    } catch (IllegalStateException e) {
                         rejected.incrementAndGet();
+                    } catch (Exception e) {
+                        unexpected.incrementAndGet();
+                        e.printStackTrace();
                     }
                     return null;
                 } finally {
@@ -326,6 +330,7 @@ public class CancelReservationControllerTest {
 
         System.out.println("succeeded=" + succeeded.get() + " rejected=" + rejected.get());
         assertThat(succeeded.get()).isEqualTo(1);
+        assertThat(unexpected.get()).isZero();
     }
 
 
