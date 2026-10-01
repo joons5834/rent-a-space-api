@@ -410,8 +410,6 @@ knowledge_base:
     disabled_servers: []
   # Source: Organization UI (base)
   automatic_linking_mode: disabled
-  # Source: Organization UI (base)
-  automatic_repository_linking: false
   # Source: defaults
   linked_repositories: []
 code_generation:
