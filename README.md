@@ -1,3 +1,4 @@
+![CI](https://github.com/joons5834/rent-a-space-api/actions/workflows/ci.yml/badge.svg)
 # 공간 예약·결제 플랫폼 백엔드
 
 시간 단위로 공간을 예약하고 결제하는 플랫폼의 백엔드 API입니다.
