@@ -16,13 +16,90 @@
 
 ## 아키텍처
 
+### 레이어 구조
+
+```mermaid
+flowchart TB
+  subgraph Client["클라이언트"]
+    B[브라우저 / HTTP]
+  end
+
+  subgraph App["Spring Boot 4.0.3 · Java 17"]
+    SEC["SecurityFilterChain<br/>세션 쿠키 인증 · /v0/login"]
+    subgraph CTL["controller"]
+      C1[ReservationController]
+      C2[SpaceController]
+      C3[UserController]
+    end
+    SVC["service<br/>비즈니스 규칙 · 동시성 제어"]
+    REPO["repository<br/>JPA · Pessimistic Lock"]
+    SUP["config (Clock, Security) · dto · enums"]
+    EXC["exception<br/>전역 예외 처리"]
+  end
+
+  DB[("PostgreSQL 운영")]
+  H2[("H2 인메모리 — 테스트 · CI")]
+
+  B --> SEC --> CTL
+  CTL --> SVC --> REPO
+  SUP -.-> SVC
+  EXC -.-> CTL
+  REPO --> DB
+  REPO -.-> H2
 ```
-controller → service → repository → DB
-                │
-        entity / dto / enums
-                │
-      exception (전역 예외 처리)
-        config (Clock, Security)
+
+### 예약 동시성 처리
+
+```mermaid
+flowchart LR
+  A[예약 요청] --> B["예약 행 비관적 락<br/>findByIdForUpdate"]
+  B --> C{중복 예약 존재?}
+  C -- 아니오 --> D["저장<br/>EXCLUDE USING gist<br/>no_overlapping_reservations"]
+  C -- 예 --> E[409 거부]
+  D --> F[성공]
+  G["soft-delete 이중 방어<br/>@SQLRestriction + deletedAt 검사"] -.-> C
+```
+
+### 레이어 구조
+
+```mermaid
+flowchart TB
+  subgraph Client["클라이언트"]
+    B[브라우저 / HTTP]
+  end
+
+  subgraph App["Spring Boot 4.0.3 · Java 17"]
+    SEC["SecurityFilterChain<br/>세션 쿠키 인증 · /v0/login"]
+    subgraph CTL["controller"]
+      C1[ReservationController]
+      C2[SpaceController]
+      C3[UserController]
+    end
+    SVC["service<br/>비즈니스 규칙 · 동시성 제어"]
+    REPO["repository<br/>JPA · Pessimistic Lock"]
+    SUP["config · dto · enums · exception"]
+  end
+
+  DB[("PostgreSQL 운영")]
+  H2[("H2 인메모리 — 테스트 · CI")]
+
+  B --> SEC --> CTL
+  CTL --> SVC --> REPO
+  SUP -.-> SVC
+  REPO --> DB
+  REPO -.-> H2
+```
+
+### 예약 동시성 처리
+
+```mermaid
+flowchart LR
+  A[예약 요청] --> B["예약 행 비관적 락<br/>findByIdForUpdate"]
+  B --> C{중복 예약 존재?}
+  C -- 아니오 --> D["저장<br/>EXCLUDE USING gist<br/>no_overlapping_reservations"]
+  C -- 예 --> E[409 거부]
+  D --> F[성공]
+  G["soft-delete 이중 방어<br/>@SQLRestriction + deletedAt 검사"] -.-> C
 ```
 
 ## 주요 기능
