@@ -424,7 +424,7 @@ public class SpaceService {
 
     @Transactional
     public void updateSubspace(Long subspaceId, UpdateSubspaceRequest request) {
-        Subspace subspace = subspaceRepository.findById(subspaceId).orElseThrow(
+        Subspace subspace = subspaceRepository.findByIdForUpdate(subspaceId).orElseThrow(
                 () -> new ResourceNotFoundException("Subspace not found with id: " + subspaceId)
         );
 
