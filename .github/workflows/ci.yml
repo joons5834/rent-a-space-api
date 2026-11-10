@@ -30,3 +30,62 @@ jobs:
             build/reports/tests/test
             build/test-results/test
           retention-days: 7
+
+  # 문서(README·docs/api.md)에 적은 실행 절차와 API 흐름이 실제로 동작하는지 확인한다.
+  # scripts/smoke-test.sh 가 회원가입부터 재취소 409 까지 16단계를 호출한다.
+  smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: rent_a_space
+          POSTGRES_USER: rent
+          POSTGRES_PASSWORD: rent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rent -d rent_a_space"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Ensure psql is available
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+      - name: Apply schema and seed
+        env:
+          PGPASSWORD: rent
+        run: |
+          psql -h localhost -U rent -d rent_a_space -v ON_ERROR_STOP=1 -f src/main/resources/rent-a-space.sql
+          psql -h localhost -U rent -d rent_a_space -v ON_ERROR_STOP=1 -f db/seed.sql
+      - name: Start the application
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/rent_a_space
+          DB_USERNAME: rent
+          DB_PASSWORD: rent
+        run: |
+          nohup ./gradlew bootRun > app.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:8080/v0/spaces; then exit 0; fi
+            sleep 2
+          done
+          echo "the application did not become ready in 120s" >&2
+          cat app.log
+          exit 1
+      - name: Smoke test the documented flow
+        run: ./scripts/smoke-test.sh
+      - name: Upload the application log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-log
+          path: app.log
+          retention-days: 7
