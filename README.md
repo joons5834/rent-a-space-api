@@ -12,7 +12,7 @@
 - Java 17, Spring Boot 4.0.3
 - Spring Data JPA, Spring Security (세션 기반 인증)
 - PostgreSQL 16 (운영·테스트, Testcontainers)
-- Gradle 9.3.1
+- Gradle 9.9.0
 
 ## 아키텍처
 
@@ -104,32 +104,130 @@ GitHub 이슈·PR에서 관리했습니다.
 
 ### 1. 요구사항
 
-- Java 17, PostgreSQL
+- JDK 17
+- Docker — PostgreSQL 16 컨테이너를 띄웁니다. Docker가 없으면 PostgreSQL 16과 `psql`을 직접 준비합니다.
+- `btree_gist` 확장이 필요합니다. `postgres:16-alpine` 이미지에는 기본 포함되어 있습니다.
+- `python3` — 동작 확인 스크립트가 JSON을 파싱할 때만 사용합니다.
 
-### 2. 환경변수
-
-| 변수 | 설명 |
-|---|---|
-| `DB_URL` | JDBC URL (예: `jdbc:postgresql://localhost:5432/rent_a_space`) |
-| `DB_USERNAME` | DB 사용자 |
-| `DB_PASSWORD` | DB 비밀번호 |
-
-### 3. 스키마 초기화
-
-**스키마는 자동 생성되지 않습니다.** 아래 스크립트를 직접 실행해야 합니다.
+### 2. PostgreSQL 실행
 
 ```bash
-psql -h localhost -U <user> -d <dbname> -f src/main/resources/rent-a-space.sql
+docker compose up -d
+docker compose ps
 ```
 
-이 스크립트에는 `btree_gist` 확장 생성과 `no_overlapping_reservations`
-EXCLUDE 제약이 포함되어 있습니다.
+`postgres`의 `STATUS`가 `Up (healthy)`가 될 때까지 기다립니다(보통 5초 안팎).
 
-### 4. 실행
+### 3. 환경변수
+
+```bash
+export DB_URL='jdbc:postgresql://localhost:5432/rent_a_space'
+export DB_USERNAME=rent
+export DB_PASSWORD=rent
+```
+
+`docker-compose.yml`에 적힌 개발용 계정입니다. 다른 DB를 쓴다면 값만 바꿉니다.
+
+### 4. 스키마와 시드 데이터
+
+**스키마는 자동 생성되지 않습니다.** 두 파일을 순서대로 적용합니다.
+
+```bash
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < src/main/resources/rent-a-space.sql
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < db/seed.sql
+```
+
+- `src/main/resources/rent-a-space.sql`: 테이블·인덱스, `btree_gist` 확장, `no_overlapping_reservations` EXCLUDE 제약
+- `db/seed.sql`: 공간 카테고리(`meeting`, `practice`, `studio`, `party`)
+
+카테고리와 이미지는 만드는 API가 없습니다. 카테고리는 `db/seed.sql`로 넣고, 공간 이미지는 지금은 비워 둡니다
+(이미지 URL을 보내려면 `images` 테이블에 같은 URL이 먼저 있어야 하고, 없으면 `400`입니다).
+
+로컬 PostgreSQL을 직접 쓴다면 `psql -h localhost -U rent -d rent_a_space -f <파일>`로 바꿔 실행합니다.
+
+### 5. 애플리케이션 실행
 
 ```bash
 ./gradlew bootRun
 ```
+
+`Tomcat started on port 8080`과 `Started RentASpaceApiCloneApplication in ... seconds` 로그가 나오면 준비가 끝났습니다.
+
+### 6. 동작 확인
+
+다른 터미널에서:
+
+```bash
+./scripts/smoke-test.sh
+```
+
+회원가입 → 로그인 → 공간·서브스페이스 생성 → 예약 → 중복 예약 409 → 취소 → 재취소 409 를 실제 HTTP로
+호출하고 상태 코드를 검사합니다. 16개 검사가 모두 통과하면 아래처럼 출력됩니다.
+
+```
+PASS  HOST 회원가입
+PASS  HOST 로그인 (세션 쿠키 저장)
+PASS  공간 생성 (HOST)
+PASS  서브스페이스 생성 (HOST)
+PASS  공간 목록 (공개, category=meeting)
+PASS  목록에 생성한 공간이 포함됨
+PASS  공간 공개 상세 (공개)
+PASS  RENTER 회원가입
+PASS  RENTER 로그인 (세션 쿠키 저장)
+PASS  예약 생성 (RENTER)
+PASS  겹치는 예약은 409
+PASS  예약 상세 (RENTER)
+PASS  예약 취소 (RENTER)
+PASS  이미 취소된 예약 재취소는 409
+PASS  호스트 예약 목록 (HOST)
+PASS  쿠키 없는 렌터 목록은 401
+
+16 checks passed
+```
+
+## API
+
+전체 요청·응답 예시와 오류 메시지는 [docs/api.md](docs/api.md)에 있습니다. 아래는 경로와 권한 요약입니다.
+
+- 인증은 **세션 쿠키** 기반입니다. `POST /v0/login`의 `Set-Cookie`를 이후 요청에 그대로 보냅니다.
+  CSRF 토큰은 없습니다.
+- 요청·응답 필드는 모두 snake_case입니다.
+- 목록 API는 `limit`(기본 10) + `next_cursor` 커서 페이지네이션을 씁니다.
+
+| 메서드 | 경로 | 권한 | 설명 | 성공 |
+|---|---|---|---|---|
+| POST | `/v0/users` | 공개 | 회원가입 | 201 |
+| POST | `/v0/login` | 공개 | 로그인, 세션 쿠키 발급 | 200 |
+| POST | `/v0/logout` | 로그인 | 로그아웃 | 200 |
+| POST | `/v0/users/{id}/roles` | 본인·ADMIN | 역할 추가 | 201 |
+| GET | `/v0/spaces` | 공개 | 공간 목록 (카테고리 필터, 커서) | 200 |
+| GET | `/v0/spaces/{id}` | 공개 | 공간 공개 상세 | 200 |
+| POST | `/v0/spaces` | HOST·ADMIN | 공간 생성 | 201 |
+| GET | `/v0/host/spaces/{id}` | 소유 HOST·ADMIN | 공간 관리용 상세 | 200 |
+| PATCH | `/v0/spaces/{id}` | 소유 HOST·ADMIN | 공간 수정 | 200 |
+| POST | `/v0/spaces/{id}/subspaces` | 소유 HOST·ADMIN | 서브스페이스 생성 | 201 |
+| GET | `/v0/host/subspaces/{id}` | 소유 HOST·ADMIN | 서브스페이스 관리용 상세 | 200 |
+| PATCH | `/v0/subspaces/{id}` | 소유 HOST·ADMIN | 서브스페이스 수정 | 200 |
+| GET | `/v0/subspaces/{id}` | 공개 | 서브스페이스 공개 상세 (비공개는 404) | 200 |
+| DELETE | `/v0/subspaces/{id}` | 소유 HOST·ADMIN | 서브스페이스 soft delete | 200 |
+| GET | `/v0/subspaces/{id}/unavailable-dates?year=&month=` | 로그인 | 휴무일 조회 | 200 |
+| GET | `/v0/subspaces/{id}/unavailable-hours?date=` | 로그인 | 예약 불가 시간 조회 | 200 |
+| POST | `/v0/reservation` | RENTER | 예약 생성 (중복은 409) | 201 |
+| GET | `/v0/host/reservations` | HOST | 호스트 예약 목록 | 200 |
+| GET | `/v0/renter/reservations` | RENTER | 렌터 예약 목록 | 200 |
+| GET | `/v0/reservation/{id}` | 관련자·ADMIN | 예약 상세 | 200 |
+| DELETE | `/v0/reservation/{id}` | 관련자 | 예약 취소 (재취소는 409) | 200 |
+
+이 프로젝트의 핵심인 예약 중복은 같은 본문을 두 번 보내면 확인할 수 있습니다.
+
+```bash
+curl -o /dev/null -w '%{http_code}\n' -b renter-cookies.txt \
+  -X POST http://localhost:8080/v0/reservation \
+  -H 'Content-Type: application/json' \
+  -d '{"subspace_id":1,"starts_at":"2026-12-10T10:00:00","ends_at":"2026-12-10T12:00:00","renter_name":"김렌터","renter_phone":"01087654321","renter_email":"docs.renter@example.com"}'
+```
+
+첫 요청은 `201`, 같은 본문을 다시 보내면 `409`가 나옵니다.
 
 ## 테스트
 
@@ -155,4 +253,7 @@ docker info   # Docker 데몬 확인
   별도 검증하며, 스키마 일원화는 Flyway 도입 시 정리합니다.
 - 스키마 초기화가 수동입니다. 마이그레이션 도구(Flyway) 도입 예정입니다.
 - Lombok 의존성 제거 진행 중입니다. (#14)
-- `docker-compose.yml`이 없어 로컬 환경을 직접 준비해야 합니다.
+- 카테고리와 이미지는 만드는 API가 없습니다. 카테고리는 `db/seed.sql`로 넣고, 공간·서브스페이스 이미지는
+  `images` 테이블에 같은 URL이 먼저 있어야 붙일 수 있습니다.
+- ADMIN 프로필은 가입 시 비활성(`enabled = false`)으로 만들어집니다. 활성화 API가 없어
+  `UPDATE users_profiles SET enabled = true WHERE user_id = <id> AND role = 'ADMIN';`로 켜야 합니다.
