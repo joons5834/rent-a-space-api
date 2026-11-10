@@ -214,7 +214,7 @@ ALTER TABLE reservations
         subspace_id WITH =,
         tstzrange(starts_at, ends_at) WITH &&
         )
-        WHERE (status != 'cancelled');
+        WHERE (status <> 'CANCELLED');
 
 ALTER TABLE "holiday_rule" ADD FOREIGN KEY ("space_id") REFERENCES "spaces" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
