@@ -25,6 +25,7 @@ import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.HolidayFrequencyType;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
+import rent_a_space_api_clone.PostgresTestSupport;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.*;
@@ -46,7 +47,7 @@ import static rent_a_space_api_clone.enums.ReservationStatus.CONFIRMED;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
-public class CreateReservationControllerTest {
+public class CreateReservationControllerTest extends PostgresTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

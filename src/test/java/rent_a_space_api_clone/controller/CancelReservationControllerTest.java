@@ -30,6 +30,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import rent_a_space_api_clone.service.ReservationService;
+import rent_a_space_api_clone.PostgresTestSupport;
 
 
 import java.time.*;
@@ -48,7 +49,7 @@ import static rent_a_space_api_clone.enums.ReservationStatus.CONFIRMED;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @WithMockUser(username = "renter@example.com", roles = {"RENTER"})
-public class CancelReservationControllerTest {
+public class CancelReservationControllerTest extends PostgresTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

@@ -14,6 +14,7 @@ import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.ReservationStatus;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
+import rent_a_space_api_clone.PostgresTestSupport;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -27,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-public class GetReservationDetailControllerTest {
+public class GetReservationDetailControllerTest extends PostgresTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

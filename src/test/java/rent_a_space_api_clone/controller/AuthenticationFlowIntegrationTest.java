@@ -16,6 +16,7 @@ import rent_a_space_api_clone.dto.LoginRequest;
 import rent_a_space_api_clone.dto.SignupRequest;
 import rent_a_space_api_clone.dto.RoleProfileRequest;
 import rent_a_space_api_clone.enums.Role;
+import rent_a_space_api_clone.PostgresTestSupport;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
@@ -28,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class AuthenticationFlowIntegrationTest {
+class AuthenticationFlowIntegrationTest extends PostgresTestSupport {
 
     @Autowired
     private WebApplicationContext webApplicationContext;

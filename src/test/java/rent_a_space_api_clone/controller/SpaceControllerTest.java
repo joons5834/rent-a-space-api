@@ -29,6 +29,7 @@ import rent_a_space_api_clone.entity.*;
 import rent_a_space_api_clone.enums.ReservationStatus;
 import rent_a_space_api_clone.enums.Role;
 import rent_a_space_api_clone.repository.*;
+import rent_a_space_api_clone.PostgresTestSupport;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.*;
@@ -48,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @WithMockUser(username = "host@example.com", roles = {"HOST"})
-public class SpaceControllerTest {
+public class SpaceControllerTest extends PostgresTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
