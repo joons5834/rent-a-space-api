@@ -27,6 +27,7 @@ import rent_a_space_api_clone.repository.ImageRepository;
 import rent_a_space_api_clone.repository.SpaceRepository;
 import rent_a_space_api_clone.repository.SubspaceImageRepository;
 import rent_a_space_api_clone.repository.SubspaceRepository;
+import rent_a_space_api_clone.PostgresTestSupport;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -41,10 +42,10 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:space_concurrency;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL")
+@SpringBootTest
 @ActiveProfiles("test")
 @Import(SpaceServiceConcurrencyTest.TestConfig.class)
-class SpaceServiceConcurrencyTest {
+class SpaceServiceConcurrencyTest extends PostgresTestSupport {
 
     @Autowired
     private SpaceService spaceService;
@@ -176,10 +177,7 @@ class SpaceServiceConcurrencyTest {
                         "SELECT id FROM subspaces WHERE id = ? FOR UPDATE NOWAIT", Long.class, subspaceId);
                 assertThat(lockedId).isEqualTo(subspaceId);
             } catch (DataAccessException ex) {
-                Throwable cause = ex.getCause();
-                if (cause instanceof SQLException sqlException
-                        && sqlException.getErrorCode() == 50200
-                        && "HYT00".equals(sqlException.getSQLState())) {
+                if (isLockNotAvailable(ex)) {
                     status.setRollbackOnly();
                     return false;
                 }
@@ -188,6 +186,21 @@ class SpaceServiceConcurrencyTest {
             spaceService.softDeleteASubspace(subspaceId);
             return true;
         }));
+    }
+
+    /**
+     * A NOWAIT lock conflict is SQLState 55P03 on PostgreSQL. Walk the cause
+     * chain because Spring wraps the driver exception differently depending
+     * on which SQLException translator fires.
+     */
+    private static boolean isLockNotAvailable(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sqlException
+                    && "55P03".equals(sqlException.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

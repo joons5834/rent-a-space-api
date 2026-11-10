@@ -6,7 +6,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class RentASpaceApiCloneApplicationTests {
+class RentASpaceApiCloneApplicationTests extends PostgresTestSupport {
 
     @Test
     void contextLoads() {

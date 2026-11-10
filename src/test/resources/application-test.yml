@@ -1,41 +1,19 @@
-# H2 In-memory database for tests
+# PostgreSQL is supplied by Testcontainers:
+# src/test/java/rent_a_space_api_clone/PostgresTestSupport.java
+#
+# Hibernate generates the schema for these tests. The production DDL
+# (src/main/resources/rent-a-space.sql) is verified separately by
+# rent_a_space_api_clone.schema.ProductionSchemaContractTest.
 spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
-
-  # JPA/Hibernate settings for tests
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
-        use_sql_comments: true
-        # Show SQL parameter binding values
-        type:
-          descriptor:
-            sql: trace
-  # H2 Console (useful for debugging tests)
   jackson:
     property-naming-strategy: SNAKE_CASE
-  h2:
-    console:
-      enabled: true
 logging:
   level:
     org.springframework.security: DEBUG
-    # Show SQL parameter bindings
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    # Alternative: show all Hibernate SQL details
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-    # Show SQL query results
-    org.hibernate.orm.jdbc.extract: TRACE
-    org.hibernate.engine.internal.StatefulPersistenceContext: TRACE
-    org.hibernate.loader: DEBUG
-    org.hibernate.collection: DEBUG
