@@ -11,7 +11,7 @@
 
 - Java 17, Spring Boot 4.0.3
 - Spring Data JPA, Spring Security (세션 기반 인증)
-- PostgreSQL (운영), H2 (테스트)
+- PostgreSQL 16 (운영·테스트, Testcontainers)
 - Gradle 9.3.1
 
 ## 아키텍처
@@ -38,14 +38,14 @@ flowchart TB
   end
 
   DB[("PostgreSQL 운영")]
-  H2[("H2 인메모리 — 테스트 · CI")]
+  TESTDB[("PostgreSQL 16 — 테스트 · CI (Testcontainers)")]
 
   B --> SEC --> CTL
   CTL --> SVC --> REPO
   SUP -.-> SVC
   EXC -.-> CTL
   REPO --> DB
-  REPO -.-> H2
+  REPO -.-> TESTDB
 ```
 
 ### 예약 동시성 처리
@@ -137,13 +137,22 @@ EXCLUDE 제약이 포함되어 있습니다.
 ./gradlew test
 ```
 
-테스트는 H2 인메모리 DB(`MODE=PostgreSQL`, `ddl-auto: create-drop`)로 실행됩니다.
-동시성 테스트(`CancelReservationControllerTest`)가 포함되어 있습니다.
+테스트는 Docker가 필요합니다. Testcontainers가 PostgreSQL 16 컨테이너를 띄우고
+`application-test.yml`의 `ddl-auto: create-drop`으로 스키마를 생성합니다.
+
+운영 DDL(`src/main/resources/rent-a-space.sql`)은 `ProductionSchemaContractTest`가
+그대로 적용해 `btree_gist` 기반 `EXCLUDE` 제약과 취소 예약 predicate를 검증합니다.
+
+```bash
+docker info   # Docker 데몬 확인
+./gradlew test
+```
 
 ## 알려진 제한
 
-- **테스트는 H2로 실행되어 PostgreSQL 전용 제약(`EXCLUDE USING gist`)을
-  검증하지 않습니다.** 운영 스키마(`rent-a-space.sql`)와 테스트 스키마가 다릅니다.
+- 애플리케이션 테스트의 스키마는 Hibernate가 생성하므로 운영 DDL과 완전히 같지는
+  않습니다. PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL로
+  별도 검증하며, 스키마 일원화는 Flyway 도입 시 정리합니다.
 - 스키마 초기화가 수동입니다. 마이그레이션 도구(Flyway) 도입 예정입니다.
 - Lombok 의존성 제거 진행 중입니다. (#14)
 - `docker-compose.yml`이 없어 로컬 환경을 직접 준비해야 합니다.
