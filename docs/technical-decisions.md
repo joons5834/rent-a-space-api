@@ -43,7 +43,7 @@ DB 차원의 안전장치는 이번에 넣지 않았습니다. 회고에는 다�
 
 예약 행에는 지금 상태만 저장됩니다. `CANCELLED`라고 적혀 있으면 취소됐다는 건 알 수 있지만, 취소가 몇 번 처리됐는지는 알 수 없습니다. 그래서 `reservation_events` 테이블에 이벤트 이력을 남기고 `UNIQUE(reservation_id, event_type)` 제약을 걸어, 같은 예약에 같은 이벤트가 두 번 들어가지 못하게 하자는 아이디어였습니다. 아직 구현하지 않았고 채택 여부도 정하지 않았습니다.[3][4]
 
-테스트는 H2에서 돌아갑니다. PostgreSQL에서 동시성을 검증한 결과로 볼 수는 없습니다.[4]
+테스트는 Testcontainers로 띄운 PostgreSQL 16에서 실행됩니다. 다만 이 테스트는 HTTP가 아니라 서비스 메서드를 직접 호출하므로, HTTP 409 응답은 컨트롤러 테스트에서 따로 확인합니다.[4]
 
 ---
 
@@ -64,7 +64,7 @@ DB 차원의 안전장치는 이번에 넣지 않았습니다. 회고에는 다�
 
 ### 2026-11-05 추가: #47 수정과 검증
 
-`updateSubspace`가 삭제와 같은 `findByIdForUpdate` 비관적 쓰기 락을 사용하도록 바꿨습니다. H2 회귀 테스트에서 수정 전에는 갱신 조회를 멈춘 사이 삭제가 완료되고 갱신이 `deleted_at`을 다시 null로 만들었습니다. 수정 후에는 NOWAIT 락 조회가 충돌하고 갱신 완료 후 삭제가 유지됐습니다. 삭제가 먼저 완료된 경우 락 조회가 삭제된 행을 제외하고 갱신은 예외를 던지는 것도 확인했습니다. 이 검증은 H2 PostgreSQL 호환 모드에서 실행했으며 실제 PostgreSQL의 동시성 검증은 아닙니다.
+`updateSubspace`가 삭제와 같은 `findByIdForUpdate` 비관적 쓰기 락을 사용하도록 바꿨습니다. 회귀 테스트는 수정 전에 갱신 조회를 멈춘 사이 삭제가 완료되고 갱신이 `deleted_at`을 다시 null로 만드는 상황을 재현합니다. 수정 후에는 NOWAIT 락 조회가 `SQLState 55P03`으로 충돌하고, 갱신이 끝난 뒤의 삭제는 그대로 유지됩니다. 삭제가 먼저 완료된 경우에는 락 조회가 삭제된 행을 제외하고 갱신이 `ResourceNotFoundException`을 던지는 것도 확인합니다. 이 검증은 Testcontainers로 띄운 PostgreSQL 16에서 실행하며(`SpaceServiceConcurrencyTest`), 회귀 테스트 자체는 2026-11-05에 H2에서 먼저 작성한 뒤 PostgreSQL로 옮겼습니다.
 
 ---
 
@@ -81,14 +81,16 @@ DB 차원의 안전장치는 이번에 넣지 않았습니다. 회고에는 다�
 - 빌드가 통과했다고 해서 PostgreSQL 전용 제약이 동작한다거나, 운영에 배포할 수 있다거나, 부하를 견딘다는 근거가 되지는 않습니다.
 - CI가 실패했을 때 브랜치 보호 규칙과 필수 체크가 실제로 머지를 막는지 아직 확인하지 않았습니다.[4]
 
+2026-11-10 추가: 위 '검증하지 못한 부분'은 이후 Testcontainers PostgreSQL 16 도입과 `ProductionSchemaContractTest`로 해소됐습니다. 이 절은 10월 3일 당시의 기록으로 남깁니다.
+
 ---
 
 ## 현재 상태 요약
 
 - **#36 취소 거부 처리:** 예외는 `IllegalStateException` 하나로 처리합니다. 이미 취소된 경우는 메시지(`"Reservation already cancelled"`)와 HTTP 409로 구분하고, 동시 요청은 비관적 락으로 막습니다.
-- **#47 soft-delete 덮어쓰기:** 갱신에 기존 비관적 락 조회를 적용하고 H2에서 회귀 검증했습니다. PostgreSQL에서는 검증하지 않았습니다.
-- **테스트 프로필과 CI:** `src/test/resources/application-test.yml`을 사용합니다. CI는 `./gradlew build`로 H2 기반 테스트 11건을 실행했고 모두 통과했습니다.
-- **PostgreSQL 전용 제약:** 정의만 되어 있고 검증하지 않았습니다.
+- **#47 soft-delete 덮어쓰기:** 갱신에 기존 비관적 락 조회를 적용하고 PostgreSQL 16에서 회귀 검증했습니다(`SpaceServiceConcurrencyTest`).
+- **테스트 프로필과 CI:** `src/test/resources/application-test.yml`을 사용하고, DB는 `PostgresTestSupport`가 Testcontainers로 띄운 PostgreSQL 16입니다. CI는 `./gradlew build`로 전체 테스트를 실행합니다.
+- **PostgreSQL 전용 제약:** `ProductionSchemaContractTest`가 운영 DDL을 그대로 적용해 `btree_gist` 확장, `no_overlapping_reservations` 제약, 취소 예약 predicate를 검증합니다(중복 삽입은 `SQLState 23P01`).
 - **브랜치 보호 설정:** 확인하지 않았습니다.
 - **결제·정산:** MVP에서는 제외했고, 이후에 넣을지는 정하지 않았습니다.[1]
 
