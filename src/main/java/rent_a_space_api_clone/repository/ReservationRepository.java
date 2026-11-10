@@ -16,7 +16,7 @@ import java.util.Optional;
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
 
     @Query("SELECT r FROM Reservation r WHERE r.subspace.id = :subspaceId " +
-           "AND r.status != 'cancelled' " +
+           "AND r.status <> 'CANCELLED' " +
            "AND r.startsAt < :end AND r.endsAt > :start")
     List<Reservation> findOverlappingReservations(
             @Param("subspaceId") Long subspaceId,

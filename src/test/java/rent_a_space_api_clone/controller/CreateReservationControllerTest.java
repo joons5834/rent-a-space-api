@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static rent_a_space_api_clone.enums.ReservationStatus.CONFIRMED;
+import static rent_a_space_api_clone.enums.ReservationStatus.CANCELLED;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -656,4 +657,36 @@ public class CreateReservationControllerTest extends PostgresTestSupport {
         assertThat(reservationRepository.findAll()).hasSize(2);
     }
 
+    @Test
+    @Transactional
+    void createReservation_ReusesWindowOfCancelledReservation() throws Exception {
+        Reservation cancelled = new Reservation();
+        cancelled.setSubspace(testSubspace);
+        cancelled.setRenterProfile(userProfileRepository.findByUserEmail("renter@example.com"));
+        cancelled.setTimezone(ZoneId.of("Asia/Seoul"));
+        cancelled.setStartsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 10, 0),
+                ZoneId.of("Asia/Seoul")));
+        cancelled.setEndsAt(ZonedDateTime.of(LocalDateTime.of(2026, 3, 10, 12, 0),
+                ZoneId.of("Asia/Seoul")));
+        cancelled.setStatus(CANCELLED);
+        cancelled.setCreatedAt(OffsetDateTime.now());
+        reservationRepository.save(cancelled);
+
+        CreateReservationRequest request = new CreateReservationRequest(
+                testSubspace.getId(),
+                LocalDateTime.of(2026, 3, 10, 10, 0),
+                LocalDateTime.of(2026, 3, 10, 12, 0),
+                "Mike",
+                "01012345678",
+                "example@example.com",
+                null
+        );
+
+        mockMvc.perform(post("/v0/reservation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        assertThat(reservationRepository.findAll()).hasSize(2);
+    }
 }
