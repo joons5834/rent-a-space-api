@@ -97,7 +97,7 @@ GitHub 이슈·PR에서 관리했습니다.
 - **해결**: ① 대상 서브스페이스에 비관적 쓰기 락(`PESSIMISTIC_WRITE`)
   ② DB 수준 백스톱으로 `EXCLUDE USING gist` 제약
   — **애플리케이션에 버그가 있어도 DB가 막는 2중 방어**입니다.
-- 참고: #11
+- 참고: [#11](https://github.com/joons5834/rent-a-space-api/issues/11)
 
 ### 2. 동시 취소 중복
 
@@ -107,14 +107,14 @@ GitHub 이슈·PR에서 관리했습니다.
 - **해결**: 예약 행에 비관적 쓰기 락을 걸어 상태 검사를 직렬화
   — 수정 후 **성공 1 / 정상 거부 9 / 예상 밖 실패 0**
 - 검증: `CancelReservationControllerTest#concurrentCancel_shouldSucceedOnlyOnce`
-- 참고: #36
+- 참고: [#36](https://github.com/joons5834/rent-a-space-api/issues/36)
 
 ### 3. Soft delete 경쟁 조건
 
 - **문제**: 서브스페이스 삭제 시 예약 존재를 확인한 뒤 `deletedAt`을 기록하는
   사이에 다른 트랜잭션이 예약을 생성할 수 있었습니다.
 - **해결**: 삭제 로직도 같은 락을 사용하도록 변경 (check-then-delete 원자화)
-- 참고: PR #35
+- 참고: [PR #35](https://github.com/joons5834/rent-a-space-api/pull/35)
 
 ## 실행 방법
 
