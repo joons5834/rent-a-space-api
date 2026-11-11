@@ -64,6 +64,106 @@ flowchart TB
   REPO -.-> TESTDB
 ```
 
+### 데이터 모델
+
+`src/main/resources/rent-a-space.sql` 기준입니다. `reservations`에는 테이블 수준 제약이 하나 더 있습니다:
+`EXCLUDE USING gist (subspace_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE (status <> 'CANCELLED')`.
+
+```mermaid
+erDiagram
+  users ||--o{ users_profiles : "1 user : N roles"
+  users_profiles ||--o{ spaces : "host"
+  categories ||--o{ spaces : "category"
+  spaces ||--o{ subspaces : "subspace"
+  spaces ||--o{ holiday_rule : "rule"
+  spaces ||--o{ holiday_override : "override"
+  spaces ||--o{ spaces_images : "gallery"
+  subspaces ||--o{ subspaces_images : "gallery"
+  images ||--o{ spaces_images : "image"
+  images ||--o{ subspaces_images : "image"
+  subspaces ||--o{ reservations : "reserved"
+  users_profiles ||--o{ reservations : "renter"
+  users_profiles ||--o{ reservations : "cancelled_by"
+
+  users {
+    int id PK
+    varchar email UK
+    varchar password
+    varchar phone
+    bool enabled
+  }
+  users_profiles {
+    int id PK
+    int user_id FK
+    varchar role "HOST / RENTER / ADMIN"
+    varchar nickname
+    bool enabled
+  }
+  categories {
+    int id PK
+    varchar name UK
+  }
+  spaces {
+    int id PK
+    int host_profile_id FK
+    int category_id FK
+    varchar name
+    time close_start
+    time close_end
+    varchar timezone
+    bool is_visible
+    timestamptz deleted_at
+  }
+  subspaces {
+    int id PK
+    int space_id FK
+    varchar name
+    int min_hours
+    int max_hours
+    bool is_visible
+    timestamptz deleted_at
+  }
+  reservations {
+    int id PK
+    int subspace_id FK
+    int renter_profile_id FK
+    timestamptz starts_at
+    timestamptz ends_at
+    varchar status "CONFIRMED / CANCELLED"
+    int cancelled_by FK
+    timestamptz cancelled_at
+  }
+  holiday_rule {
+    int id PK
+    int space_id FK
+    varchar frequency_type
+    smallint day_mask
+  }
+  holiday_override {
+    int id PK
+    int space_id FK
+    date starts_at
+    date ends_at
+    bool is_closed
+  }
+  images {
+    int id PK
+    varchar full_url
+  }
+  spaces_images {
+    int id PK
+    int space_id FK
+    int image_id FK
+    int order_seq
+  }
+  subspaces_images {
+    int id PK
+    int subspace_id FK
+    int image_id FK
+    int order_seq
+  }
+```
+
 ### 예약 동시성 처리
 
 ```mermaid
