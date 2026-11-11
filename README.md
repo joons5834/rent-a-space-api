@@ -118,6 +118,21 @@ GitHub 이슈·PR에서 관리했습니다.
 
 ## 실행 방법
 
+### 0. 한 번에 실행 (복사·붙여넣기)
+
+Docker와 JDK 17이 있으면 아래 5줄이면 끝납니다. `--wait`는 Compose v2.17 이상에서 동작합니다.
+
+```bash
+docker compose up -d --wait
+export DB_URL='jdbc:postgresql://localhost:5432/rent_a_space' DB_USERNAME=rent DB_PASSWORD=rent
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < src/main/resources/rent-a-space.sql
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < db/seed.sql
+./gradlew bootRun
+```
+
+다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면 `16 checks passed`가 나옵니다.
+아래 1~6번은 같은 절차를 단계별로 설명한 것입니다.
+
 ### 1. 요구사항
 
 - JDK 17
