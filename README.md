@@ -17,8 +17,21 @@ PostgreSQL 제약으로 이중 방어**한 것입니다. 결제·정산은 범�
 - **DB 백스톱** — `EXCLUDE USING gist` 부분 제약으로, 애플리케이션에 버그가 있어도 겹치는 예약은
   저장되지 않습니다. `ProductionSchemaContractTest`
 
-3분 안에 실행: [실행 방법](#실행-방법) · API 21개 실측 예시: [docs/api.md](docs/api.md) ·
-의사결정 기록: [docs/technical-decisions.md](docs/technical-decisions.md)
+한 번에 실행하려면 (Docker + JDK 17):
+
+```bash
+docker compose up -d --wait
+export DB_URL='jdbc:postgresql://localhost:5432/rent_a_space' DB_USERNAME=rent DB_PASSWORD=rent
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < src/main/resources/rent-a-space.sql
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < db/seed.sql
+./gradlew bootRun
+```
+
+`--wait`는 Compose v2.17 이상에서 동작합니다. 다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면
+`16 checks passed`가 나옵니다.
+
+API 21개 실측 예시: [docs/api.md](docs/api.md) · 의사결정 기록(왜 비관적 락인가, 무엇을 검증하지
+*못했는가*): [docs/technical-decisions.md](docs/technical-decisions.md)
 
 ## 기술 스택
 
@@ -215,20 +228,7 @@ GitHub 이슈·PR에서 관리했습니다.
 
 ## 실행 방법
 
-### 0. 한 번에 실행 (복사·붙여넣기)
-
-Docker와 JDK 17이 있으면 아래 5줄이면 끝납니다. `--wait`는 Compose v2.17 이상에서 동작합니다.
-
-```bash
-docker compose up -d --wait
-export DB_URL='jdbc:postgresql://localhost:5432/rent_a_space' DB_USERNAME=rent DB_PASSWORD=rent
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < src/main/resources/rent-a-space.sql
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < db/seed.sql
-./gradlew bootRun
-```
-
-다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면 `16 checks passed`가 나옵니다.
-아래 1~6번은 같은 절차를 단계별로 설명한 것입니다.
+아래 1~6번은 `30초 요약`의 5줄을 단계별로 설명한 것입니다.
 
 ### 1. 요구사항
 
