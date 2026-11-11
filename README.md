@@ -18,7 +18,7 @@
 - **DB 백스톱** — `EXCLUDE USING gist` 부분 제약으로, 애플리케이션에 버그가 있어도 겹치는 예약은
   저장되지 않습니다. `ProductionSchemaContractTest`
 
-한 번에 실행하려면 (Docker + JDK 17). **스키마·시드는 첫 실행에서만** 적용합니다 — 볼륨
+한 번에 실행하려면 (Docker + JDK 17). **스키마는 첫 실행에서만** 적용합니다 — 볼륨
 `postgres-data`가 유지되고 DDL이 `IF NOT EXISTS` 없이 테이블을 만들기 때문에, 다시 적용하면 실패합니다.
 
 ```bash
@@ -32,6 +32,8 @@ docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space 
 `--wait`는 Compose v2.17 이상에서 동작합니다. 두 번째 실행부터는 `docker compose up -d --wait`와
 `export …`만 하고 `./gradlew bootRun`을 실행하면 됩니다. 초기화가 중간에 끊겨 스키마가 반쯤만
 만들어졌다면 `docker compose down -v`로 볼륨을 지우고 위 블록을 처음부터 다시 실행합니다.
+`db/seed.sql`은 `ON CONFLICT (name) DO NOTHING`이라 몇 번이든 다시 실행할 수 있습니다. 스키마는
+성공했는데 시드만 실패했다면 시드 줄만 다시 실행하면 됩니다(카테고리가 없으면 공간 생성이 400입니다).
 다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면 `16 checks passed`가 나옵니다.
 
 API 21개 실측 예시: [docs/api.md](docs/api.md) · 의사결정 기록(왜 비관적 락인가, 무엇을 검증하지
