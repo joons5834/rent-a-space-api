@@ -1,27 +1,24 @@
 ![CI](https://github.com/joons5834/rent-a-space-api/actions/workflows/ci.yml/badge.svg)
+
 # 공간 예약 플랫폼 백엔드
 
-시간 단위 공간 예약, 취소 및 공간 관리를 제공하는 백엔드 API입니다. 결제·정산은 현재 구현 범위에 포함되지 않습니다.
-**중복 예약과 중복 취소 같은 동시성 문제를 락과 DB 제약으로 해결한 과정**을
-중심으로 정리했습니다.
+시간 단위로 공간을 예약하는 백엔드입니다. 핵심은 **중복 예약과 중복 취소를 애플리케이션 락과
+PostgreSQL 제약으로 이중 방어**한 것입니다. 결제·정산은 범위에서 제외했습니다.
 
 > [스페이스클라우드](https://www.spacecloud.kr)를 참고해 만든 개인 학습 프로젝트입니다.
 
 ## 30초 요약
 
-시간 단위로 공간을 예약하는 백엔드입니다. 핵심은 **중복 예약과 중복 취소를 애플리케이션 락과
-PostgreSQL 제약으로 이중 방어**한 것입니다. 결제·정산은 범위에서 제외했습니다.
+- **테스트 112개 통과** — 14개 클래스, 실제 PostgreSQL 16(Testcontainers). `./gradlew test`
+- **HTTP 스모크 16단계 통과** — 가입 → 공간 생성 → 예약 → 중복 409 → 취소 → 재취소 409.
+  `./scripts/smoke-test.sh`
+- **동시 취소 10건 재현** — 수정 전 성공 10 / 거부 0 → 수정 후 성공 1 / 거부 9
+  (`CancelReservationControllerTest`, 서비스 계층 직접 호출)
+- **DB 백스톱** — `EXCLUDE USING gist` 부분 제약으로, 애플리케이션에 버그가 있어도 겹치는 예약은
+  저장되지 않습니다. `ProductionSchemaContractTest`
 
-| 증거 | 값 | 어디서 확인하나 |
-|---|---|---|
-| 테스트 | **112개 통과** (14 클래스, PostgreSQL 16 Testcontainers) | `./gradlew test` |
-| HTTP 스모크 | **16단계 통과** — 가입 → 공간 생성 → 예약 → 중복 409 → 취소 → 재취소 409 | `./scripts/smoke-test.sh` |
-| 동시 취소 10건 | 수정 전 **성공 10 / 거부 0** → 수정 후 **성공 1 / 거부 9** (서비스 계층 직접 호출) | `CancelReservationControllerTest#concurrentCancel_shouldSucceedOnlyOnce` |
-| DB 백스톱 | `EXCLUDE USING gist` — 애플리케이션에 버그가 있어도 겹치는 예약은 저장되지 않음 | `ProductionSchemaContractTest` |
-
-- 3분 안에 실행: [실행 방법](#실행-방법)
-- API 21개 엔드포인트의 실측 요청·응답: [docs/api.md](docs/api.md)
-- 왜 비관적 락인가, 무엇을 검증하지 *못했는가*: [docs/technical-decisions.md](docs/technical-decisions.md)
+3분 안에 실행: [실행 방법](#실행-방법) · API 21개 실측 예시: [docs/api.md](docs/api.md) ·
+의사결정 기록: [docs/technical-decisions.md](docs/technical-decisions.md)
 
 ## 기술 스택
 
