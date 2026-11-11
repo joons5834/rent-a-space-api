@@ -1,11 +1,43 @@
 ![CI](https://github.com/joons5834/rent-a-space-api/actions/workflows/ci.yml/badge.svg)
+
 # 공간 예약 플랫폼 백엔드
 
-시간 단위 공간 예약, 취소 및 공간 관리를 제공하는 백엔드 API입니다. 결제·정산은 현재 구현 범위에 포함되지 않습니다.
-**중복 예약과 중복 취소 같은 동시성 문제를 락과 DB 제약으로 해결한 과정**을
-중심으로 정리했습니다.
+시간 단위로 공간을 예약하는 백엔드입니다. **중복 예약**은 애플리케이션 락과 PostgreSQL `EXCLUDE`
+제약으로 이중 방어하고, **중복 취소**는 예약 행 락 안에서 상태를 검사해 막습니다. 결제·정산은
+범위에서 제외했습니다.
 
 > [스페이스클라우드](https://www.spacecloud.kr)를 참고해 만든 개인 학습 프로젝트입니다.
+
+## 30초 요약
+
+- **테스트 112개 통과** — 14개 클래스, 실제 PostgreSQL 16(Testcontainers). `./gradlew test`
+- **HTTP 스모크 16단계 통과** — 가입 → 공간 생성 → 예약 → 중복 409 → 취소 → 재취소 409.
+  `./scripts/smoke-test.sh`
+- **동시 취소 10건 재현** — 수정 전 성공 10 / 거부 0 → 수정 후 성공 1 / 거부 9
+  (`CancelReservationControllerTest`, 서비스 계층 직접 호출)
+- **DB 백스톱** — `EXCLUDE USING gist` 부분 제약으로, 애플리케이션에 버그가 있어도 겹치는 예약은
+  저장되지 않습니다. `ProductionSchemaContractTest`
+
+한 번에 실행하려면 (Docker + JDK 17). **스키마는 첫 실행에서만** 적용합니다 — 볼륨
+`postgres-data`가 유지되고 DDL이 `IF NOT EXISTS` 없이 테이블을 만들기 때문에, 다시 적용하면 실패합니다.
+
+```bash
+docker compose up -d --wait
+export DB_URL='jdbc:postgresql://localhost:5432/rent_a_space' DB_USERNAME=rent DB_PASSWORD=rent
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < src/main/resources/rent-a-space.sql
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space -f - < db/seed.sql
+./gradlew bootRun
+```
+
+`--wait`는 Compose v2.17 이상에서 동작합니다. 두 번째 실행부터는 `docker compose up -d --wait`와
+`export …`만 하고 `./gradlew bootRun`을 실행하면 됩니다. 초기화가 중간에 끊겨 스키마가 반쯤만
+만들어졌다면 `docker compose down -v`로 볼륨을 지우고 위 블록을 처음부터 다시 실행합니다.
+`db/seed.sql`은 `ON CONFLICT (name) DO NOTHING`이라 몇 번이든 다시 실행할 수 있습니다. 스키마는
+성공했는데 시드만 실패했다면 시드 줄만 다시 실행하면 됩니다(카테고리가 없으면 공간 생성이 400입니다).
+다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면 `16 checks passed`가 나옵니다.
+
+API 21개 실측 예시: [docs/api.md](docs/api.md) · 의사결정 기록(왜 비관적 락인가, 무엇을 검증하지
+*못했는가*): [docs/technical-decisions.md](docs/technical-decisions.md)
 
 ## 기술 스택
 
@@ -48,6 +80,106 @@ flowchart TB
   REPO -.-> TESTDB
 ```
 
+### 데이터 모델
+
+`src/main/resources/rent-a-space.sql` 기준입니다. `reservations`에는 테이블 수준 제약이 하나 더 있습니다:
+`EXCLUDE USING gist (subspace_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE (status <> 'CANCELLED')`.
+
+```mermaid
+erDiagram
+  users ||--o{ users_profiles : "1 user : N roles"
+  users_profiles ||--o{ spaces : "host"
+  categories ||--o{ spaces : "category"
+  spaces ||--o{ subspaces : "subspace"
+  spaces ||--o{ holiday_rule : "rule"
+  spaces ||--o{ holiday_override : "override"
+  spaces ||--o{ spaces_images : "gallery"
+  subspaces ||--o{ subspaces_images : "gallery"
+  images ||--o{ spaces_images : "image"
+  images ||--o{ subspaces_images : "image"
+  subspaces ||--o{ reservations : "reserved"
+  users_profiles ||--o{ reservations : "renter"
+  users_profiles o|--o{ reservations : "cancelled_by"
+
+  users {
+    int id PK
+    varchar email UK
+    varchar password
+    varchar phone
+    bool enabled
+  }
+  users_profiles {
+    int id PK
+    int user_id FK
+    varchar role "HOST / RENTER / ADMIN"
+    varchar nickname
+    bool enabled
+  }
+  categories {
+    int id PK
+    varchar name UK
+  }
+  spaces {
+    int id PK
+    int host_profile_id FK
+    int category_id FK
+    varchar name
+    time close_start
+    time close_end
+    varchar timezone
+    bool is_visible
+    timestamptz deleted_at
+  }
+  subspaces {
+    int id PK
+    int space_id FK
+    varchar name
+    int min_hours
+    int max_hours
+    bool is_visible
+    timestamptz deleted_at
+  }
+  reservations {
+    int id PK
+    int subspace_id FK
+    int renter_profile_id FK
+    timestamptz starts_at
+    timestamptz ends_at
+    varchar status "CONFIRMED / CANCELLED"
+    int cancelled_by FK
+    timestamptz cancelled_at
+  }
+  holiday_rule {
+    int id PK
+    int space_id FK
+    varchar frequency_type
+    smallint day_mask
+  }
+  holiday_override {
+    int id PK
+    int space_id FK
+    date starts_at
+    date ends_at
+    bool is_closed
+  }
+  images {
+    int id PK
+    varchar full_url
+  }
+  spaces_images {
+    int id PK
+    int space_id FK
+    int image_id FK
+    int order_seq
+  }
+  subspaces_images {
+    int id PK
+    int subspace_id FK
+    int image_id FK
+    int order_seq
+  }
+```
+
 ### 예약 동시성 처리
 
 ```mermaid
@@ -81,7 +213,7 @@ GitHub 이슈·PR에서 관리했습니다.
 - **해결**: ① 대상 서브스페이스에 비관적 쓰기 락(`PESSIMISTIC_WRITE`)
   ② DB 수준 백스톱으로 `EXCLUDE USING gist` 제약
   — **애플리케이션에 버그가 있어도 DB가 막는 2중 방어**입니다.
-- 참고: #11
+- 참고: [#11](https://github.com/joons5834/rent-a-space-api/issues/11)
 
 ### 2. 동시 취소 중복
 
@@ -91,16 +223,18 @@ GitHub 이슈·PR에서 관리했습니다.
 - **해결**: 예약 행에 비관적 쓰기 락을 걸어 상태 검사를 직렬화
   — 수정 후 **성공 1 / 정상 거부 9 / 예상 밖 실패 0**
 - 검증: `CancelReservationControllerTest#concurrentCancel_shouldSucceedOnlyOnce`
-- 참고: #36
+- 참고: [#36](https://github.com/joons5834/rent-a-space-api/issues/36)
 
 ### 3. Soft delete 경쟁 조건
 
 - **문제**: 서브스페이스 삭제 시 예약 존재를 확인한 뒤 `deletedAt`을 기록하는
   사이에 다른 트랜잭션이 예약을 생성할 수 있었습니다.
 - **해결**: 삭제 로직도 같은 락을 사용하도록 변경 (check-then-delete 원자화)
-- 참고: PR #35
+- 참고: [PR #35](https://github.com/joons5834/rent-a-space-api/pull/35)
 
 ## 실행 방법
+
+아래 1~6번은 `30초 요약`의 5줄을 단계별로 설명한 것입니다.
 
 ### 1. 요구사항
 
@@ -248,12 +382,11 @@ docker info   # Docker 데몬 확인
 
 ## 알려진 제한
 
-- 애플리케이션 테스트의 스키마는 Hibernate가 생성하므로 운영 DDL과 완전히 같지는
-  않습니다. PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL로
-  별도 검증하며, 스키마 일원화는 Flyway 도입 시 정리합니다.
-- 스키마 초기화가 수동입니다. 마이그레이션 도구(Flyway) 도입 예정입니다.
-- Lombok 의존성 제거 진행 중입니다. (#14)
-- 카테고리와 이미지는 만드는 API가 없습니다. 카테고리는 `db/seed.sql`로 넣고, 공간·서브스페이스 이미지는
-  `images` 테이블에 같은 URL이 먼저 있어야 붙일 수 있습니다.
-- ADMIN 프로필은 가입 시 비활성(`enabled = false`)으로 만들어집니다. 활성화 API가 없어
-  `UPDATE users_profiles SET enabled = true WHERE user_id = <id> AND role = 'ADMIN';`로 켜야 합니다.
+- **테스트 스키마와 운영 DDL이 같지 않습니다.** 애플리케이션 테스트 스키마는 Hibernate가 만들고,
+  PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL(`src/main/resources/rent-a-space.sql`)을
+  그대로 적용해 따로 검증합니다. 스키마 일원화는 Flyway 도입 시 정리합니다.
+- **스키마 초기화가 수동입니다.** 마이그레이션 도구 없이 `psql -f`로 적용합니다.
+- **카테고리·이미지를 만드는 API가 없습니다.** 카테고리는 `db/seed.sql`로 넣고, 이미지 URL은
+  `images` 테이블에 먼저 있어야 공간·서브스페이스에 붙일 수 있습니다.
+- **ADMIN 프로필은 가입 시 비활성(`enabled = false`)으로 생성되고, 활성화 API가 없습니다.**
+  `UPDATE users_profiles SET enabled = true WHERE user_id = <id> AND role = 'ADMIN';`로 켭니다.
