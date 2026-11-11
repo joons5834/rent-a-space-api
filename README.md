@@ -2,8 +2,9 @@
 
 # 공간 예약 플랫폼 백엔드
 
-시간 단위로 공간을 예약하는 백엔드입니다. 핵심은 **중복 예약과 중복 취소를 애플리케이션 락과
-PostgreSQL 제약으로 이중 방어**한 것입니다. 결제·정산은 범위에서 제외했습니다.
+시간 단위로 공간을 예약하는 백엔드입니다. **중복 예약**은 애플리케이션 락과 PostgreSQL `EXCLUDE`
+제약으로 이중 방어하고, **중복 취소**는 예약 행 락 안에서 상태를 검사해 막습니다. 결제·정산은
+범위에서 제외했습니다.
 
 > [스페이스클라우드](https://www.spacecloud.kr)를 참고해 만든 개인 학습 프로젝트입니다.
 
@@ -17,7 +18,8 @@ PostgreSQL 제약으로 이중 방어**한 것입니다. 결제·정산은 범�
 - **DB 백스톱** — `EXCLUDE USING gist` 부분 제약으로, 애플리케이션에 버그가 있어도 겹치는 예약은
   저장되지 않습니다. `ProductionSchemaContractTest`
 
-한 번에 실행하려면 (Docker + JDK 17):
+한 번에 실행하려면 (Docker + JDK 17). **스키마·시드는 첫 실행에서만** 적용합니다 — 볼륨
+`postgres-data`가 유지되고 DDL이 `IF NOT EXISTS` 없이 테이블을 만들기 때문에, 다시 적용하면 실패합니다.
 
 ```bash
 docker compose up -d --wait
@@ -27,8 +29,10 @@ docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U rent -d rent_a_space 
 ./gradlew bootRun
 ```
 
-`--wait`는 Compose v2.17 이상에서 동작합니다. 다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면
-`16 checks passed`가 나옵니다.
+`--wait`는 Compose v2.17 이상에서 동작합니다. 두 번째 실행부터는 `docker compose up -d --wait`와
+`export …`만 하고 `./gradlew bootRun`을 실행하면 됩니다. 초기화가 중간에 끊겨 스키마가 반쯤만
+만들어졌다면 `docker compose down -v`로 볼륨을 지우고 위 블록을 처음부터 다시 실행합니다.
+다른 터미널에서 `./scripts/smoke-test.sh`를 실행하면 `16 checks passed`가 나옵니다.
 
 API 21개 실측 예시: [docs/api.md](docs/api.md) · 의사결정 기록(왜 비관적 락인가, 무엇을 검증하지
 *못했는가*): [docs/technical-decisions.md](docs/technical-decisions.md)
@@ -93,7 +97,7 @@ erDiagram
   images ||--o{ subspaces_images : "image"
   subspaces ||--o{ reservations : "reserved"
   users_profiles ||--o{ reservations : "renter"
-  users_profiles ||--o{ reservations : "cancelled_by"
+  users_profiles o|--o{ reservations : "cancelled_by"
 
   users {
     int id PK
