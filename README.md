@@ -279,12 +279,11 @@ docker info   # Docker 데몬 확인
 
 ## 알려진 제한
 
-- 애플리케이션 테스트의 스키마는 Hibernate가 생성하므로 운영 DDL과 완전히 같지는
-  않습니다. PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL로
-  별도 검증하며, 스키마 일원화는 Flyway 도입 시 정리합니다.
-- 스키마 초기화가 수동입니다. 마이그레이션 도구(Flyway) 도입 예정입니다.
-- Lombok 의존성 제거 진행 중입니다. (#14)
-- 카테고리와 이미지는 만드는 API가 없습니다. 카테고리는 `db/seed.sql`로 넣고, 공간·서브스페이스 이미지는
-  `images` 테이블에 같은 URL이 먼저 있어야 붙일 수 있습니다.
-- ADMIN 프로필은 가입 시 비활성(`enabled = false`)으로 만들어집니다. 활성화 API가 없어
-  `UPDATE users_profiles SET enabled = true WHERE user_id = <id> AND role = 'ADMIN';`로 켜야 합니다.
+- **테스트 스키마와 운영 DDL이 같지 않습니다.** 애플리케이션 테스트 스키마는 Hibernate가 만들고,
+  PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL(`src/main/resources/rent-a-space.sql`)을
+  그대로 적용해 따로 검증합니다. 스키마 일원화는 Flyway 도입 시 정리합니다.
+- **스키마 초기화가 수동입니다.** 마이그레이션 도구 없이 `psql -f`로 적용합니다.
+- **카테고리·이미지를 만드는 API가 없습니다.** 카테고리는 `db/seed.sql`로 넣고, 이미지 URL은
+  `images` 테이블에 먼저 있어야 공간·서브스페이스에 붙일 수 있습니다.
+- **ADMIN 프로필은 가입 시 비활성(`enabled = false`)으로 생성되고, 활성화 API가 없습니다.**
+  `UPDATE users_profiles SET enabled = true WHERE user_id = <id> AND role = 'ADMIN';`로 켭니다.
