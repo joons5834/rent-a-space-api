@@ -384,7 +384,7 @@ docker info   # Docker 데몬 확인
 
 - **테스트 스키마와 운영 DDL이 같지 않습니다.** 애플리케이션 테스트 스키마는 Hibernate가 만들고,
   PostgreSQL 전용 제약은 `ProductionSchemaContractTest`가 운영 DDL(`src/main/resources/rent-a-space.sql`)을
-  그대로 적용해 따로 검증합니다. 스키마 일원화는 Flyway 도입 시 정리합니다.
+  그대로 적용해 따로 검증합니다.
 - **스키마 초기화가 수동입니다.** 마이그레이션 도구 없이 `psql -f`로 적용합니다.
 - **카테고리·이미지를 만드는 API가 없습니다.** 카테고리는 `db/seed.sql`로 넣고, 이미지 URL은
   `images` 테이블에 먼저 있어야 공간·서브스페이스에 붙일 수 있습니다.
